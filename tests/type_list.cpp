@@ -6,32 +6,63 @@
 #include <catch2/catch.hpp>
 
 #include <string>
+#include <algorithm>
 #include <type_traits>
 
 #include <exl/poly.hpp>
 
-TEST_CASE("Type list has correct types", "[type_list]")
+TEST_CASE("Type list properties test", "[type_list]")
 {
     using TL = exl::impl::type_list<int, char, std::string>;
 
-    REQUIRE(std::is_same<int, typename TL::head>::value);
-    REQUIRE(std::is_same<char, typename TL::tail::head>::value);
-    REQUIRE(std::is_same<std::string, typename TL::tail::tail::head>::value);
+    SECTION("Types are correct")
+    {
+        REQUIRE(std::is_same<int, typename TL::head>::value);
+        REQUIRE(std::is_same<char, typename TL::tail::head>::value);
+        REQUIRE(std::is_same<std::string, typename TL::tail::tail::head>::value);
+    }
+
+    SECTION("Has correct size")
+    {
+        REQUIRE(exl::impl::type_list_get_size<TL>::value() == 3);
+    }
+
+    SECTION("Has correct type id's")
+    {
+        REQUIRE(exl::impl::type_list_get_type_id<TL, std::string>::value() == 0);
+        REQUIRE(exl::impl::type_list_get_type_id<TL, char>::value() == 1);
+        REQUIRE(exl::impl::type_list_get_type_id<TL, int>::value() == 2);
+    }
+
+    SECTION("Has correct max sizeof")
+    {
+        static const size_t MAX_SIZEOF = std::max({sizeof(int), sizeof(char), sizeof(std::string)});
+        REQUIRE(exl::impl::type_list_get_max_sizeof<TL>::value() == MAX_SIZEOF);
+    }
+
+    SECTION("Has correct max alignof")
+    {
+        static const size_t MAX_ALIGNOF = 
+            std::max({alignof(int), alignof(char), alignof(std::string)});
+        REQUIRE(exl::impl::type_list_get_max_alignof<TL>::value() == MAX_ALIGNOF);
+    }
+
+    SECTION("Has correct type for id's")
+    {
+        REQUIRE(std::is_same<
+            typename exl::impl::type_list_get_type_for_id<TL, 2>::type,
+            int
+        >::value);
+
+        REQUIRE(std::is_same<
+            typename exl::impl::type_list_get_type_for_id<TL, 1>::type,
+            char
+        >::value);
+
+        REQUIRE(std::is_same<
+            typename exl::impl::type_list_get_type_for_id<TL, 0>::type,
+            std::string
+        >::value);
+    }
 }
 
-TEST_CASE("Type list has correct size", "[type_list]")
-{
-    using TL = exl::impl::type_list<int, char, size_t>;
-
-    REQUIRE(uint8_t(exl::impl::type_list_get_size<TL>::value) == 3);
-    REQUIRE(uint8_t(exl::impl::type_list_get_size<exl::impl::type_list_null>::value) == 0);
-}
-
-TEST_CASE("Type list has correct type ids", "[type_list]")
-{
-    using TL = exl::impl::type_list<int, char, std::string>;
-
-    REQUIRE(uint8_t(exl::impl::type_list_get_type_id<TL, std::string>::value) == 0);
-    REQUIRE(uint8_t(exl::impl::type_list_get_type_id<TL, char>::value) == 1);
-    REQUIRE(uint8_t(exl::impl::type_list_get_type_id<TL, int>::value) == 2);
-}
