@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <type_traits>
 #include <functional>
+#include <map>
+#include <utility>
 
 #include <catch2/catch.hpp>
 
@@ -16,61 +18,109 @@ using namespace exl::impl;
 
 namespace
 {
+    using Tag = int;
+
+    Tag AsCopiedTag(Tag tag)
+    {
+        if (tag < 0)
+        {
+            tag = -tag;
+        }
+
+        return tag * 16;
+    }
+
+    Tag AsMovedTag(Tag tag)
+    {
+        if (tag > 0)
+        {
+            tag = -tag;
+        }
+
+        return tag * 16;
+    }
+
+    enum class CallType
+    {
+        Construct,
+        Assign,
+        Copy,
+        Move,
+        Destroy
+    };
+
+    class CallCounter
+    {
+    public:
+        using CallCount = std::map<std::pair<CallType, Tag>, size_t>;
+
+    public:
+        void RegisterCall(CallType callType, Tag tag)
+        {
+            calls_[std::make_pair(callType, tag)] += 1;
+        }
+
+        size_t GetCallCount(CallType callType, Tag tag)
+        {
+            return calls_[std::make_pair(callType, tag)];
+        }
+
+        void Reset()
+        {
+            calls_.clear();
+        }
+
+    private:
+        CallCount calls_;
+    };
+
     class ClassMock
     {
     public:
-        using Tag = size_t;
-
-    public:
-        explicit ClassMock(Tag instanceTag)
-            : tag(instanceTag)
-            , onCopy(nullptr)
-            , onCopyAssign(nullptr)
-            , onMove(nullptr)
-            , onMoveAssign(nullptr)
-            , onDestroy(nullptr) {}
+        ClassMock(Tag tag, CallCounter* callCounter = nullptr)
+            : tag_(tag)
+            , callCounter_(callCounter) {}
 
         ClassMock(const ClassMock& rhs)
-            : tag(rhs.tag)
-            , onCopy(rhs.onCopy)
-            , onCopyAssign(rhs.onCopyAssign)
-            , onMove(rhs.onMove)
-            , onMoveAssign(rhs.onMoveAssign)
-            , onDestroy(rhs.onDestroy)
+            : tag_(AsCopiedTag(rhs.tag_))
+            , callCounter_(rhs.callCounter_)
         {
-            if (onCopy)
+            if (callCounter_)
             {
-                onCopy(rhs);
+                callCounter_->RegisterCall(CallType::Construct, tag_);
+            }
+
+            if (rhs.callCounter_)
+            {
+                rhs.callCounter_->RegisterCall(CallType::Copy, rhs.tag_);
             }
         }
 
         ClassMock(ClassMock&& rhs)
-            // mock class properties should be copied even when moving
-            : tag(rhs.tag)
-            , onCopy(rhs.onCopy)
-            , onCopyAssign(rhs.onCopyAssign)
-            , onMove(rhs.onMove)
-            , onMoveAssign(rhs.onMoveAssign)
-            , onDestroy(rhs.onDestroy)
+            : tag_(AsMovedTag(rhs.tag_))
+            , callCounter_(rhs.callCounter_)
         {
-            if (onMove)
+            if (callCounter_)
             {
-                onMove(std::move(rhs));
+                callCounter_->RegisterCall(CallType::Construct, tag_);
+            }
+
+            if (rhs.callCounter_)
+            {
+                rhs.callCounter_->RegisterCall(CallType::Move, rhs.tag_);
             }
         }
 
         const ClassMock& operator=(const ClassMock& rhs)
         {
-            tag = rhs.tag;
-            onCopy = rhs.onCopy;
-            onCopyAssign = rhs.onCopyAssign;
-            onMove = rhs.onMove;
-            onMoveAssign = rhs.onMoveAssign;
-            onDestroy = rhs.onDestroy;
-
-            if (onCopyAssign)
+            if (callCounter_)
             {
-                onCopyAssign(rhs);
+                callCounter_->RegisterCall(CallType::Assign, tag_);
+            }
+
+            if (rhs.callCounter_)
+            {
+                rhs.callCounter_->RegisterCall(CallType::Copy, rhs.tag_);
             }
 
             return *this;
@@ -78,16 +128,14 @@ namespace
 
         const ClassMock& operator=(ClassMock&& rhs)
         {
-            tag = rhs.tag;
-            onCopy = rhs.onCopy;
-            onCopyAssign = rhs.onCopyAssign;
-            onMove = rhs.onMove;
-            onMoveAssign = rhs.onMoveAssign;
-            onDestroy = rhs.onDestroy;
-
-            if (onMoveAssign)
+            if (callCounter_)
             {
-                onMoveAssign(std::move(rhs));
+                callCounter_->RegisterCall(CallType::Assign, tag_);
+            }
+
+            if (rhs.callCounter_)
+            {
+                rhs.callCounter_->RegisterCall(CallType::Move, rhs.tag_);
             }
 
             return *this;
@@ -95,70 +143,55 @@ namespace
 
         ~ClassMock()
         {
-            if (onDestroy)
+            if (callCounter_)
             {
-                onDestroy(*this);
+                callCounter_->RegisterCall(CallType::Destroy, tag_);
             }
         }
 
+        Tag GetTag() const
+        {
+            return tag_;
+        }
+
     public:
-        Tag tag;
-
-        std::function<void(const ClassMock&)> onCopy;
-        std::function<void(const ClassMock&)> onCopyAssign;
-
-        std::function<void(ClassMock&&)> onMove;
-        std::function<void(ClassMock&&)> onMoveAssign;
-
-        std::function<void(const ClassMock&)> onDestroy;
+        Tag tag_;
+        CallCounter* callCounter_;
     };
 
-    class SecondClassMock : public ClassMock {};
+    class SecondClassMock : public ClassMock
+    {
+    public:
+        SecondClassMock(Tag tag, CallCounter* callCounter = nullptr)
+            : ClassMock(tag, callCounter) {}
+    };
 }
 
 TEST_CASE("Mixed type construction test", "[mixed]")
 {
     using Mixed = exl::mixed<int, char, std::string, ClassMock, SecondClassMock>;
+    CallCounter callCounter;
+    ClassMock mock(1, &callCounter);
 
     SECTION("Copy constructor called")
     {
-        int copyCount = 0;
-        int acquiredTag = 0;
-
-        ClassMock mock(42);
-        mock.onCopy = [&copyCount, &acquiredTag](const ClassMock& rhs)
-        {
-            acquiredTag = rhs.tag;
-            ++copyCount;
-        };
-
         Mixed m(mock);
-
-        REQUIRE(copyCount == 1);
-        REQUIRE(acquiredTag == 42);
+        REQUIRE(callCounter.GetCallCount(CallType::Move, mock.GetTag()) == 0);
+        REQUIRE(callCounter.GetCallCount(CallType::Copy, mock.GetTag()) == 1);
+        REQUIRE(callCounter.GetCallCount(CallType::Construct, AsCopiedTag(mock.GetTag())) == 1);
     }
 
     SECTION("Move constructor called")
     {
-        int moveCount = 0;
-        int acquiredTag = 0;
-
-        ClassMock mock(22);
-        mock.onMove = [&moveCount, &acquiredTag](ClassMock&& rhs)
-        {
-            acquiredTag = rhs.tag;
-            ++moveCount;
-        };
-
         Mixed m(std::move(mock));
-
-        REQUIRE(moveCount == 1);
-        REQUIRE(acquiredTag == 22);
+        REQUIRE(callCounter.GetCallCount(CallType::Move, mock.GetTag()) == 1);
+        REQUIRE(callCounter.GetCallCount(CallType::Copy, mock.GetTag()) == 0);
+        REQUIRE(callCounter.GetCallCount(CallType::Construct, AsMovedTag(mock.GetTag())) == 1);
     }
 
     SECTION("Correct tag assigned on construction")
     {
-        Mixed m(ClassMock(11));
+        Mixed m(ClassMock(1));
         REQUIRE(m.is<ClassMock>() == true);
 
         Mixed m2(char(255));
@@ -166,22 +199,42 @@ TEST_CASE("Mixed type construction test", "[mixed]")
     }
 }
 
-TEST_CASE("Midex type assignment operators test", "[mixed]")
-{
-    REQUIRE(false);
-}
-
 TEST_CASE("Mixed type correct destructor call test", "[mixed]")
 {
-    REQUIRE(false);
+    using Mixed = exl::mixed<int, ClassMock, SecondClassMock>;
+    CallCounter callCounter;
+    ClassMock mock(1, &callCounter);
+
+    SECTION("Mock is destroyed")
+    {
+        {
+            Mixed m(mock);
+        }
+        // Destroyed
+
+        REQUIRE(callCounter.GetCallCount(CallType::Destroy, AsCopiedTag(mock.GetTag())) == 1);
+    }
 }
 
-TEST_CASE("Mixed type in-place construction test", "[mixed]")
+TEST_CASE("Mixed type assignment operators test", "[mixed]")
+{
+    using Mixed = exl::mixed<int, ClassMock, SecondClassMock>;
+    CallCounter callCounter;
+
+    ClassMock mock1(1, &callCounter);
+    ClassMock mock2(2, &callCounter);
+    SecondClassMock mock3(3, &callCounter);
+    SecondClassMock mock4(4, &callCounter);
+
+    // TODO
+}
+
+TEST_CASE("Mixed type in-place construction test", "[mixed][.]")
 {
     REQUIRE(false);
 }
 
-TEST_CASE("Mixed type emplace test", "[mixed]")
+TEST_CASE("Mixed type emplace test", "[mixed][.]")
 {
     REQUIRE(false);
 }

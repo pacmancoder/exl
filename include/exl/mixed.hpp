@@ -8,7 +8,10 @@
 #include <new>
 #include <type_traits>
 
-#include <exl/impl/type_list.hpp>
+// only for std::terminate
+#include <exception>
+
+#include <exl/impl/mixed_storage_operations.hpp>
 
 namespace exl
 {
@@ -22,27 +25,72 @@ namespace exl
             impl::type_list_get_max_sizeof<type_list_t>::value(),
             impl::type_list_get_max_alignof<type_list_t>::value()>::type;
 
-    public:
-        template <typename U>
-        mixed(const U& rhs)
-            : storage_()
-            , tag_(tag_of<U>())
-        {
-            new (&storage_) U(rhs);
-        }
+        using storage_operations = impl::mixed_storage_operations<type_list_t, storage_t>;
 
+    public:
         template <typename U>
         mixed(U&& rhs)
             : storage_()
             , tag_(tag_of<typename std::decay<U>::type>())
         {
-            new (&storage_) (typename std::decay<U>::type)(std::forward<U>(rhs));
+            construct(std::forward<U>(rhs));
+        }
+
+        template <typename U>
+        const mixed<Types...>& operator=(U&& rhs)
+        {
+            if (rhs.tag() == tag())
+            {
+                unsafe_unwrap<U>() = rhs;
+            }
+            else
+            {
+                destroy();
+                construct(std::forward<U>(rhs));
+            }
+
+            return *this;
         }
 
         template <typename U>
         bool is()
         {
             return tag_of<U>() == tag_;
+        }
+
+        template <typename U>
+        U& unwrap()
+        {
+            if (tag() != tag_of<U>())
+            {
+                std::terminate();
+            }
+
+            return unsafe_unwrap();
+        }
+
+        ~mixed()
+        {
+            destroy();
+        }
+
+    private:
+
+        void destroy()
+        {
+            storage_operations::destroy(storage_, tag_);
+        }
+
+        template <typename U>
+        void construct(U&& rhs)
+        {
+            new (&storage_) (typename std::decay<U>::type)(std::forward<U>(rhs));
+        }
+
+        template <typename U>
+        U& unsafe_unwrap()
+        {
+            return reinterpret_cast<U&>(storage_);
         }
 
         tag_t tag()
