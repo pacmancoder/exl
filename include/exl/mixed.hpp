@@ -39,9 +39,9 @@ namespace exl
         template <typename U>
         const mixed<Types...>& operator=(U&& rhs)
         {
-            if (rhs.tag() == tag())
+            if (tag_of<typename std::decay<U>::type>() == tag())
             {
-                unsafe_unwrap<U>() = rhs;
+                unsafe_unwrap<U>() = std::forward<U>(rhs);
             }
             else
             {
@@ -66,7 +66,7 @@ namespace exl
                 std::terminate();
             }
 
-            return unsafe_unwrap();
+            return unsafe_unwrap<U>();
         }
 
         ~mixed()
