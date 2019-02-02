@@ -4,7 +4,6 @@
 # Compiled Object files
 *.slo
 *.lo
-*.o
 *.obj
 
 # Precompiled Headers
@@ -28,9 +27,10 @@
 
 # Executables
 *.exe
-*.out
 *.app
 
 # User-defined
 /.vscode
+/.idea
 /build
+/cmake-build-debug

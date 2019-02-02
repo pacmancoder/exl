@@ -17,7 +17,6 @@
 using namespace exl::impl;
 using namespace exl::mock;
 
-
 TEST_CASE("Mixed type construction test", "[mixed]")
 {
     using Mixed = exl::mixed<int, char, std::string, ClassMock, SecondClassMock>;

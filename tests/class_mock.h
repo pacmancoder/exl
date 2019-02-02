@@ -64,9 +64,9 @@ namespace exl { namespace mock
     class ClassMock
     {
     public:
-        ClassMock(Tag tag, CallCounter* calls = nullptr)
-            : tag_(tag)
-            , calls_(calls)
+        explicit ClassMock(Tag tag, CallCounter* calls = nullptr)
+                : tag_(tag)
+                , calls_(calls)
         {
             if (calls_)
             {
@@ -75,8 +75,8 @@ namespace exl { namespace mock
         }
 
         ClassMock(const ClassMock& rhs)
-            : tag_(as_copied_tag(rhs.tag_))
-            , calls_(rhs.calls_)
+                : tag_(as_copied_tag(rhs.tag_))
+                , calls_(rhs.calls_)
         {
             if (calls_)
             {
@@ -90,8 +90,8 @@ namespace exl { namespace mock
         }
 
         ClassMock(ClassMock&& rhs)
-            : tag_(as_moved_tag(rhs.tag_))
-            , calls_(rhs.calls_)
+                : tag_(as_moved_tag(rhs.tag_))
+                , calls_(rhs.calls_)
         {
             if (calls_)
             {
@@ -104,7 +104,7 @@ namespace exl { namespace mock
             }
         }
 
-        const ClassMock& operator=(const ClassMock& rhs)
+        ClassMock& operator=(const ClassMock& rhs)
         {
             if (calls_)
             {
@@ -121,7 +121,7 @@ namespace exl { namespace mock
             return *this;
         }
 
-        const ClassMock& operator=(ClassMock&& rhs)
+        ClassMock& operator=(ClassMock&& rhs)
         {
             if (calls_)
             {
@@ -159,8 +159,8 @@ namespace exl { namespace mock
     class SecondClassMock : public ClassMock
     {
     public:
-        SecondClassMock(Tag tag, CallCounter* calls = nullptr)
-            : ClassMock(tag, calls) {}
+        explicit SecondClassMock(Tag tag, CallCounter* calls = nullptr)
+                : ClassMock(tag, calls) {}
     };
 
 }}

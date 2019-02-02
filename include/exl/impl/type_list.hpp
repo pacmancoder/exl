@@ -45,7 +45,8 @@ namespace exl { namespace impl
     public:
         static constexpr type_list_tag_t value()
         {
-            return type_list_get_size<typename type_list<Head, Types...>::tail>::value() + 1;
+            return type_list_get_size<typename type_list<Head, Types...>::tail>::value()
+                    + type_list_tag_t(1);
         }
     };
 
@@ -67,7 +68,7 @@ namespace exl { namespace impl
     public:
         static constexpr type_list_tag_t value()
         {
-            return type_list_get_size<type_list<T, Types...>>::value() - 1;
+            return type_list_get_size<type_list<T, Types...>>::value() - type_list_tag_t(1);
         }
     };
 
@@ -104,11 +105,11 @@ namespace exl { namespace impl
 
     private:
         static constexpr size_t HEAD_SIZEOF = sizeof(Head);
-        static constexpr size_t TAIL_MAX_SIZEOF = 
-            type_list_get_max_sizeof<type_list<Types...>>::value();
+        static constexpr size_t TAIL_MAX_SIZEOF =
+                type_list_get_max_sizeof<type_list<Types...>>::value();
     };
 
-    template<>
+    template <>
     struct type_list_get_max_sizeof<type_list<>>
     {
     public:
@@ -131,11 +132,11 @@ namespace exl { namespace impl
 
     private:
         static constexpr size_t HEAD_ALIGNOF = alignof(Head);
-        static constexpr size_t TAIL_MAX_ALIGNOF = 
-            type_list_get_max_alignof<type_list<Types...>>::value();
+        static constexpr size_t TAIL_MAX_ALIGNOF =
+                type_list_get_max_alignof<type_list<Types...>>::value();
     };
 
-    template<>
+    template <>
     struct type_list_get_max_alignof<type_list<>>
     {
     public:
@@ -153,9 +154,10 @@ namespace exl { namespace impl
     {
     public:
         using type = typename std::conditional<
-            type_list_get_type_id<type_list<Head, Types...>, Head>::value() == id,
-            Head,
-            typename type_list_get_type_for_id<type_list<Types...>, id>::type>::type;
+                type_list_get_type_id<type_list<Head, Types...>, Head>::value() == id,
+                Head,
+                typename type_list_get_type_for_id<type_list<Types...>, id>::type
+        >::type;
     };
 
     template <type_list_tag_t id>
@@ -163,5 +165,51 @@ namespace exl { namespace impl
     {
     public:
         using type = type_list_null;
+    };
+
+    template <typename TL, typename T>
+    struct type_list_has_type;
+
+    template <typename T, typename Head, typename ... Types>
+    struct type_list_has_type<type_list<Head, Types...>, T>
+    {
+        static constexpr bool value()
+        {
+            return type_list_has_type<type_list<Types...>, T>::value();
+        }
+    };
+
+    template <typename Head, typename ... Types>
+    struct type_list_has_type<type_list<Head, Types...>, Head>
+    {
+        static constexpr bool value() { return true; }
+    };
+
+    template <typename T>
+    struct type_list_has_type<type_list<>, T>
+    {
+        static constexpr bool value() { return false; }
+    };
+
+    template <typename Subset, typename Superset>
+    struct type_list_is_subset_of;
+
+    template <typename TL, typename Head, typename ... Types>
+    struct type_list_is_subset_of<type_list<Head, Types...>, TL>
+    {
+        static constexpr bool value()
+        {
+            return type_list_has_type<TL, Head>::value()
+                    && type_list_is_subset_of<type_list<Types...>, TL>::value();
+        }
+    };
+
+    template <typename TL>
+    struct type_list_is_subset_of<type_list<>, TL>
+    {
+        static constexpr bool value()
+        {
+            return true;
+        }
     };
 }}

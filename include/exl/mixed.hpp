@@ -22,22 +22,23 @@ namespace exl
         using tag_t = uint8_t;
         using type_list_t = impl::type_list<Types...>;
         using storage_t = typename std::aligned_storage<
-            impl::type_list_get_max_sizeof<type_list_t>::value(),
-            impl::type_list_get_max_alignof<type_list_t>::value()>::type;
+                impl::type_list_get_max_sizeof<type_list_t>::value(),
+                impl::type_list_get_max_alignof<type_list_t>::value()
+        >::type;
 
         using storage_operations = impl::mixed_storage_operations<type_list_t, storage_t>;
 
     public:
         template <typename U>
-        mixed(U&& rhs)
-            : storage_()
-            , tag_(tag_of<typename std::decay<U>::type>())
+        explicit mixed(U&& rhs)
+                : storage_()
+                , tag_(tag_of<typename std::decay<U>::type>())
         {
             construct(std::forward<U>(rhs));
         }
 
         template <typename U>
-        const mixed<Types...>& operator=(U&& rhs)
+        mixed<Types...>& operator=(U&& rhs)
         {
             if (tag_of<typename std::decay<U>::type>() == tag())
             {
@@ -84,7 +85,7 @@ namespace exl
         template <typename U>
         void construct(U&& rhs)
         {
-            new (&storage_) (typename std::decay<U>::type)(std::forward<U>(rhs));
+            new(&storage_) (typename std::decay<U>::type)(std::forward<U>(rhs));
         }
 
         template <typename U>

@@ -15,9 +15,9 @@ target_include_directories(${PROJECT_NAME} INTERFACE include)
 set(TEST_PROJECT_NAME ${PROJECT_NAME}-test)
 
 add_executable(${TEST_PROJECT_NAME}
-    tests/tests.cpp
-    tests/type_list.cpp
-    tests/mixed.cpp
+        tests/tests.cpp
+        tests/type_list.cpp
+        tests/mixed.cpp
 )
 
 include_directories(${TEST_PROJECT_NAME} third-party)

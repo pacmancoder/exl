@@ -10,9 +10,13 @@
 namespace exl { namespace impl
 {
     template <
-        typename TL,
-        typename Storage,
-        type_list_tag_t ExpectedTag = impl::type_list_get_type_id<TL, typename TL::head>::value()>
+            typename TL,
+            typename Storage,
+            type_list_tag_t ExpectedTag = impl::type_list_get_type_id<
+                    TL,
+                    typename TL::head
+            >::value()
+    >
     struct mixed_storage_operations
     {
     public:
@@ -34,9 +38,7 @@ namespace exl { namespace impl
     };
 
 
-    template <
-        typename TL,
-        typename Storage>
+    template <typename TL, typename Storage>
     struct mixed_storage_operations<TL, Storage, 0>
     {
     public:

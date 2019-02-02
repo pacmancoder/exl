@@ -39,14 +39,14 @@ TEST_CASE("Type list properties test", "[type_list]")
     SECTION("Has correct max sizeof")
     {
         static const size_t MAX_SIZEOF =
-            std::max({sizeof(int), sizeof(char), sizeof(std::string)});
+                std::max({ sizeof(int), sizeof(char), sizeof(std::string) });
         REQUIRE(type_list_get_max_sizeof<TL>::value() == MAX_SIZEOF);
     }
 
     SECTION("Has correct max alignof")
     {
         static const size_t MAX_ALIGNOF =
-            std::max({alignof(int), alignof(char), alignof(std::string)});
+                std::max({ alignof(int), alignof(char), alignof(std::string) });
         REQUIRE(type_list_get_max_alignof<TL>::value() == MAX_ALIGNOF);
     }
 
@@ -58,3 +58,60 @@ TEST_CASE("Type list properties test", "[type_list]")
     }
 }
 
+TEST_CASE("Type list has type test", "[type_list]")
+{
+    using TL = type_list<int, char, std::string>;
+
+    SECTION("Has declared types")
+    {
+        REQUIRE(type_list_has_type<TL, int>::value());
+        REQUIRE(type_list_has_type<TL, char>::value());
+        REQUIRE(type_list_has_type<TL, std::string>::value());
+    }
+
+    SECTION("Undeclared types absent")
+    {
+        REQUIRE(!type_list_has_type<TL, std::wstring>::value());
+        REQUIRE(!type_list_has_type<TL, type_list<int>>::value());
+    }
+}
+
+TEST_CASE("Type list is subset test", "[type_list]")
+{
+    using TL = type_list<int, char, std::string>;
+
+    SECTION("Empty type list is subset of any type list")
+    {
+        REQUIRE(type_list_is_subset_of<type_list<>, TL>::value());
+        REQUIRE(type_list_is_subset_of<type_list<>, type_list<int>>::value());
+    }
+
+    SECTION("Check is subset of same type list")
+    {
+        REQUIRE(type_list_is_subset_of<TL, TL>::value());
+    }
+
+    SECTION("Check is subset of other type list with full intersection")
+    {
+        using SupersetTL = type_list<std::string, std::wstring, size_t, char, int>;
+        REQUIRE(type_list_is_subset_of<TL, SupersetTL>::value());
+    }
+
+    SECTION("Check is not subset f other type list without intersections")
+    {
+        using SupersetTL = type_list<std::wstring, type_list<int>>;
+        REQUIRE(!type_list_is_subset_of<TL, SupersetTL>::value());
+    }
+
+    SECTION("Check in not subset of type list with partial intersection")
+    {
+        using SupersetTL = type_list<int, std::wstring, std::string>;
+        REQUIRE(!type_list_is_subset_of<TL, SupersetTL>::value());
+    }
+
+    SECTION("Check is not subset of empty type list")
+    {
+        using SupersetTL = type_list<>;
+        REQUIRE(!type_list_is_subset_of<TL, SupersetTL>::value());
+    }
+}
