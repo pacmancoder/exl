@@ -7,16 +7,15 @@
 
 namespace exl { namespace impl
 {
-    // type_list_tag_t
-
+    /// @brief Represents id of type in the type list
     using type_list_tag_t = uint8_t;
 
-    // type_list_null
-
+    /// @brief Represents nullptr-like substitution for template parameters
     struct type_list_null {};
 
-    // type_list
 
+    /// @brief Type which can be used as compile-time container for types.
+    /// @tparam Types list of types which will be represented as single type list type
     template <typename ... Types>
     struct type_list;
 
@@ -36,6 +35,8 @@ namespace exl { namespace impl
         using tail = type_list_null;
     };
 
+    /// @brief Helper type to calculate size of type list (types count)
+    /// @TL Type list which be used for calculations
     template <typename TL>
     struct type_list_get_size;
 
@@ -43,6 +44,8 @@ namespace exl { namespace impl
     struct type_list_get_size<type_list<Head, Types...>>
     {
     public:
+
+        /// @brief Returns type list size
         static constexpr type_list_tag_t value()
         {
             return type_list_get_size<typename type_list<Head, Types...>::tail>::value()
@@ -57,8 +60,10 @@ namespace exl { namespace impl
         static constexpr type_list_tag_t value() { return 0; }
     };
 
-    // type_list_get_type_id
 
+    /// @brief Helper type to obtain unique ID for specified Type in type list
+    /// @tparam TL Type list to perform check on
+    /// @tparam T Type for which search will be performed
     template <typename TL, typename T>
     struct type_list_get_type_id;
 
@@ -66,6 +71,8 @@ namespace exl { namespace impl
     struct type_list_get_type_id<type_list<T, Types...>, T>
     {
     public:
+
+        /// @brief Returns id of Specified type
         static constexpr type_list_tag_t value()
         {
             return type_list_get_size<type_list<T, Types...>>::value() - type_list_tag_t(1);
@@ -89,8 +96,9 @@ namespace exl { namespace impl
         static constexpr type_list_tag_t value() { return 0; }
     };
 
-    // type_list_get_max_sizeof
 
+    /// @brief Helper type to calculate storage type size which suitable for any type in type list
+    /// @tparam TL Type list used for calculation of size
     template <typename TL>
     struct type_list_get_max_sizeof;
 
@@ -98,6 +106,7 @@ namespace exl { namespace impl
     struct type_list_get_max_sizeof<type_list<Head, Types...>>
     {
     public:
+        /// @brief Returns storage type size which suitable for any type in type list
         static constexpr size_t value()
         {
             return (HEAD_SIZEOF > TAIL_MAX_SIZEOF) ? HEAD_SIZEOF : TAIL_MAX_SIZEOF;
@@ -116,8 +125,8 @@ namespace exl { namespace impl
         static constexpr size_t value() { return 0; }
     };
 
-    // type_list_get_max_alignof
-
+    /// @brief Helper type to calculate storage type align which suitable for any type in type list
+    /// @tparam TL Type list used for calculation of alignment
     template <typename TL>
     struct type_list_get_max_alignof;
 
@@ -125,6 +134,8 @@ namespace exl { namespace impl
     struct type_list_get_max_alignof<type_list<Head, Types...>>
     {
     public:
+
+        /// @brief Returns storage type align which suitable for any type in type list
         static constexpr size_t value()
         {
             return (HEAD_ALIGNOF > TAIL_MAX_ALIGNOF) ? HEAD_ALIGNOF : TAIL_MAX_ALIGNOF;
@@ -143,8 +154,10 @@ namespace exl { namespace impl
         static constexpr size_t value() { return 0; }
     };
 
-    // type_list_get_type_for_id
-
+    /// @brief Helper class to obtain Type in type list by its ID
+    /// @tparam TL Type list to perform search on
+    /// @tparam id Id of type to search
+    /// @note Will return type_list_null if type not found
     template <typename TL, type_list_tag_t id>
     struct type_list_get_type_for_id;
 
@@ -153,6 +166,7 @@ namespace exl { namespace impl
     struct type_list_get_type_for_id<type_list<Head, Types...>, id>
     {
     public:
+        /// @brief Found type for specified ID
         using type = typename std::conditional<
                 type_list_get_type_id<type_list<Head, Types...>, Head>::value() == id,
                 Head,
@@ -167,12 +181,16 @@ namespace exl { namespace impl
         using type = type_list_null;
     };
 
+    /// @brief Helper type to check that type list contains specified type
+    /// @tparam TL Type list to check on
+    /// @tparam T Type to check for
     template <typename TL, typename T>
     struct type_list_has_type;
 
     template <typename T, typename Head, typename ... Types>
     struct type_list_has_type<type_list<Head, Types...>, T>
     {
+        /// @brief Returns true if type list has specified type
         static constexpr bool value()
         {
             return type_list_has_type<type_list<Types...>, T>::value();
@@ -191,12 +209,17 @@ namespace exl { namespace impl
         static constexpr bool value() { return false; }
     };
 
+    /// @brief Helper type to check if specified type list is subset of another type list
+    /// @tparam TL Superset type list to perform check on
+    /// @tparam SubsetTL Subset type list to perform check for
+    /// @note: Empty type list is subset of any type list
     template <typename Subset, typename Superset>
     struct type_list_is_subset_of;
 
     template <typename TL, typename Head, typename ... Types>
     struct type_list_is_subset_of<type_list<Head, Types...>, TL>
     {
+        /// @brief Returns true if specified type list is subset of specified superset
         static constexpr bool value()
         {
             return type_list_has_type<TL, Head>::value()
@@ -210,6 +233,52 @@ namespace exl { namespace impl
         static constexpr bool value()
         {
             return true;
+        }
+    };
+
+    /// @brief Helper type to get type id of subset's type list in superset type list
+    /// @tparam TL Superset type list to perform mapping on
+    /// @tparam SubsetTL Subset type list to perform mapping for
+    /// @note WARNING: Mapping of type index, which is not bound to TL subset type will cause
+    /// undefined behavior.
+    template <
+            typename TL,
+            typename SubsetTL,
+            type_list_tag_t ExpectedTag = type_list_get_type_id<
+                    SubsetTL,
+                    typename SubsetTL::head
+            >::value()
+    >
+    struct type_list_subset_id_mapping
+    {
+    public:
+        static constexpr type_list_tag_t mapped = type_list_get_type_id<
+                TL,
+                typename type_list_get_type_for_id<SubsetTL, ExpectedTag>::type
+        >::value();
+
+    public:
+
+        /// @brief Returns ID which mapped to subset's type in superset type list
+        static type_list_tag_t get(type_list_tag_t targetID)
+        {
+            return (targetID == ExpectedTag)
+                    ? mapped
+                    : type_list_subset_id_mapping<TL, SubsetTL, ExpectedTag - 1>::get(targetID);
+        }
+    };
+
+    template <typename TL, typename SubsetTL>
+    struct type_list_subset_id_mapping<TL, SubsetTL, 0>
+    {
+    public:
+
+        static type_list_tag_t get(type_list_tag_t targetID)
+        {
+            return type_list_get_type_id<
+                    TL,
+                    typename type_list_get_type_for_id<SubsetTL, 0>::type
+            >::value();
         }
     };
 }}

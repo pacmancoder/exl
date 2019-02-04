@@ -115,3 +115,29 @@ TEST_CASE("Type list is subset test", "[type_list]")
         REQUIRE(!type_list_is_subset_of<TL, SupersetTL>::value());
     }
 }
+
+TEST_CASE("Type list subset id mapping test")
+{
+    using TL = type_list<std::string, std::wstring, size_t, char, int>;
+    using SubsetTL = type_list<int, char, std::string>;
+
+    using Mapper = type_list_subset_id_mapping<TL, SubsetTL>;
+
+    SECTION("First mapping test")
+    {
+        constexpr auto fromSubsetID = type_list_get_type_id<SubsetTL, std::string>::value();
+        REQUIRE(Mapper::get(fromSubsetID) == type_list_get_type_id<TL, std::string>::value());
+    }
+
+    SECTION("Second mapping test")
+    {
+        constexpr auto fromSubsetID = type_list_get_type_id<SubsetTL, char>::value();
+        REQUIRE(Mapper::get(fromSubsetID) == type_list_get_type_id<TL, char>::value());
+    }
+
+    SECTION("Third mapping test")
+    {
+        constexpr auto fromSubsetID = type_list_get_type_id<SubsetTL, int>::value();
+        REQUIRE(Mapper::get(fromSubsetID) == type_list_get_type_id<TL, int>::value());
+    }
+}
