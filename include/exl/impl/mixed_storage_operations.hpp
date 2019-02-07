@@ -6,6 +6,7 @@
 #pragma once
 
 #include <exl/impl/type_list.hpp>
+#include <new>
 
 namespace exl { namespace impl
 {
@@ -22,11 +23,9 @@ namespace exl { namespace impl
     public:
         static void destroy(Storage& storage, type_list_tag_t actualTag)
         {
-            using T = typename impl::type_list_get_type_for_id<TL, ExpectedTag>::type;
-
             if (actualTag == ExpectedTag)
             {
-                reinterpret_cast<T*>(&storage)->~T();
+                reinterpret_cast<CurrentType*>(&storage)->~CurrentType();
                 return;
             }
 
@@ -44,9 +43,30 @@ namespace exl { namespace impl
     public:
         static void destroy(Storage& storage, type_list_tag_t)
         {
-            using T = typename impl::type_list_get_type_for_id<TL, 0>::type;
-
-            reinterpret_cast<T*>(&storage)->~T();
+            reinterpret_cast<CurrentType*>(&storage)->~CurrentType();
         }
+
+        template <typename RhsStorageOperations, typename RhsStorage>
+        static void copy_construct_from(
+                Storage& dest,
+                const RhsStorage& src,
+                type_list_tag_t
+        )
+        {
+            new(&dest) (CurrentType)(reinterpret_cast<const CurrentType&>(src));
+        }
+
+        template <typename RhsStorageOperations, typename RhsStorage>
+        static void move_construct_from(
+                Storage& dest,
+                RhsStorage&& src,
+                type_list_tag_t
+        )
+        {
+            new(&dest) (CurrentType)(std::move(reinterpret_cast<CurrentType&>(src)));
+        }
+
+    private:
+        using CurrentType = typename impl::type_list_get_type_for_id<TL, 0>::type;
     };
 }}

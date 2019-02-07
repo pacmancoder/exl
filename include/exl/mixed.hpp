@@ -16,8 +16,13 @@
 namespace exl
 {
     template <typename ... Types>
-    class mixed
+    class mixed : impl::marker::mixed
     {
+    public:
+        template <typename ... FTypes>
+        friend
+        struct mixed;
+
     public:
         using tag_t = uint8_t;
         using type_list_t = impl::type_list<Types...>;
@@ -26,32 +31,45 @@ namespace exl
                 impl::type_list_get_max_alignof<type_list_t>::value()
         >::type;
 
-        using storage_operations = impl::mixed_storage_operations<type_list_t, storage_t>;
-
     public:
         template <typename U>
         explicit mixed(U&& rhs)
                 : storage_()
                 , tag_(tag_of<typename std::decay<U>::type>())
         {
-            construct(std::forward<U>(rhs));
+            construct_from_specific(std::forward<U>(rhs));
         }
 
-        template <typename U>
+        template <
+                typename U,
+                typename = typename std::enable_if<
+                        !std::is_base_of<
+                                impl::marker::mixed,
+                                typename std::decay<U>::type
+                        >::value
+                >::type
+        >
         mixed<Types...>& operator=(U&& rhs)
         {
-            if (tag_of<typename std::decay<U>::type>() == tag())
+            constexpr auto newTag = tag_of<typename std::decay<U>::type>();
+
+            if (newTag == tag())
             {
                 unsafe_unwrap<U>() = std::forward<U>(rhs);
             }
             else
             {
                 destroy();
-                construct(std::forward<U>(rhs));
+                construct_from_specific(std::forward<U>(rhs));
+                tag_ = newTag;
             }
 
             return *this;
         }
+
+        void operator=(mixed<Types...>&) = delete;
+
+        void operator=(mixed<Types...>&&) = delete;
 
         template <typename U>
         bool is()
@@ -76,16 +94,52 @@ namespace exl
         }
 
     private:
+        using StorageOperations = impl::mixed_storage_operations<type_list_t, storage_t>;
 
+    private:
         void destroy()
         {
-            storage_operations::destroy(storage_, tag_);
+            StorageOperations::destroy(storage_, tag_);
         }
 
         template <typename U>
-        void construct(U&& rhs)
+        void construct_from_specific(U&& rhs)
         {
             new(&storage_) (typename std::decay<U>::type)(std::forward<U>(rhs));
+        }
+
+        template <typename U>
+        void construct_from_subset_by_copy(const U& rhs)
+        {
+            using RhsStorageOperations = typename U::StorageOperations;
+            using RhsTL = typename U::type_list_t;
+
+            StorageOperations::template copy_construct_from<RhsStorageOperations>(
+                    storage_,
+                    rhs.storage_,
+                    rhs.tag_
+            );
+
+            tag_ = impl::type_list_subset_id_mapping<type_list_t, RhsTL>::get(
+                    rhs.tag_
+            );
+        }
+
+        template <typename U>
+        void construct_from_subset_by_move(U&& rhs)
+        {
+            using RhsStorageOperations = typename U::StorageOperations;
+            using RhsTL = typename U::type_list_t;
+
+            StorageOperations::template move_construct_from<RhsStorageOperations>(
+                    storage_,
+                    std::move(rhs.storage_),
+                    rhs.tag_
+            );
+
+            tag_ = impl::type_list_subset_id_mapping<type_list_t, RhsTL>::get(
+                    rhs.tag_
+            );
         }
 
         template <typename U>
