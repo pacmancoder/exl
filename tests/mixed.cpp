@@ -136,9 +136,94 @@ TEST_CASE("Mixed type assignment operators test", "[mixed]")
     }
 }
 
-TEST_CASE("Mixed type construct from another mixed test", "[mixed][.]")
+TEST_CASE("Mixed type construct from another mixed test", "[mixed]")
 {
-    REQUIRE(false);
+    using Mixed = exl::mixed<int, std::string, ClassMock, char>;
+    using MixedSubset = exl::mixed<ClassMock, char, std::string>;
+
+    CallCounter calls;
+
+    SECTION("Constructed from mixed with string my copy")
+    {
+        const std::string GREETING("hello there!");
+
+        MixedSubset m1(GREETING);
+        Mixed m2(m1);
+
+        REQUIRE(m2.is<std::string>());
+        REQUIRE(m2.unwrap<std::string>() == GREETING);
+    }
+
+    SECTION("Constructed from same type with mock by copy")
+    {
+        Mixed m1(ClassMock(1, &calls));
+        Mixed m2(m1);
+
+        REQUIRE(m2.is<ClassMock>());
+
+        // m1 construction
+        REQUIRE(calls.count(CallType::Move, 1) == 1);
+        REQUIRE(calls.count(CallType::Construct, as_moved_tag(1)) == 1);
+        // m2 construction
+        REQUIRE(calls.count(CallType::Copy, as_moved_tag(1)) == 1);
+        REQUIRE(calls.count(CallType::Construct, as_copied_tag(as_moved_tag(1))) == 1);
+    }
+
+    SECTION("Constructed from mixed with class mock by copy")
+    {
+        MixedSubset m1(ClassMock(1, &calls));
+        Mixed m2(m1);
+
+        REQUIRE(m2.is<ClassMock>());
+
+        // m1 construction
+        REQUIRE(calls.count(CallType::Move, 1) == 1);
+        REQUIRE(calls.count(CallType::Construct, as_moved_tag(1)) == 1);
+        // m2 construction
+        REQUIRE(calls.count(CallType::Copy, as_moved_tag(1)) == 1);
+        REQUIRE(calls.count(CallType::Construct, as_copied_tag(as_moved_tag(1))) == 1);
+    }
+
+    SECTION("Constructed from mixed with string by move")
+    {
+        const std::string GREETING("hello there!");
+
+        MixedSubset m1(GREETING);
+        Mixed m2(std::move(m1));
+
+        REQUIRE(m2.is<std::string>());
+        REQUIRE(m2.unwrap<std::string>() == GREETING);
+    }
+
+    SECTION("Constructed from same type with mock by move")
+    {
+        Mixed m1(ClassMock(1, &calls));
+        Mixed m2(std::move(m1));
+
+        REQUIRE(m2.is<ClassMock>());
+
+        // m1 construction
+        REQUIRE(calls.count(CallType::Move, 1) == 1);
+        REQUIRE(calls.count(CallType::Construct, as_moved_tag(1)) == 1);
+        // m2 construction
+        REQUIRE(calls.count(CallType::Move, as_moved_tag(1)) == 1);
+        REQUIRE(calls.count(CallType::Construct, as_moved_tag(as_moved_tag(1))) == 1);
+    }
+
+    SECTION("Constructed from mixed with class mock by move")
+    {
+        MixedSubset m1(ClassMock(1, &calls));
+        Mixed m2(std::move(m1));
+
+        REQUIRE(m2.is<ClassMock>());
+
+        // m1 construction
+        REQUIRE(calls.count(CallType::Move, 1) == 1);
+        REQUIRE(calls.count(CallType::Construct, as_moved_tag(1)) == 1);
+        // m2 construction
+        REQUIRE(calls.count(CallType::Move, as_moved_tag(1)) == 1);
+        REQUIRE(calls.count(CallType::Construct, as_moved_tag(as_moved_tag(1))) == 1);
+    }
 }
 
 TEST_CASE("Mixed type assign from another mixed test", "[mixed][.]")

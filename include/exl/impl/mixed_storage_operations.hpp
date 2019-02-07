@@ -21,6 +21,10 @@ namespace exl { namespace impl
     struct mixed_storage_operations
     {
     public:
+        using type_list_t = TL;
+        using storage_t = Storage;
+
+    public:
         static void destroy(Storage& storage, type_list_tag_t actualTag)
         {
             if (actualTag == ExpectedTag)
@@ -34,6 +38,67 @@ namespace exl { namespace impl
                     actualTag
             );
         }
+
+        template <typename RhsStorageOperations, typename RhsStorage>
+        static void copy_construct_from(
+                Storage& dest,
+                const RhsStorage& src,
+                type_list_tag_t srcTag
+        )
+        {
+            using idMap = type_list_subset_id_mapping<
+                    type_list_t,
+                    typename RhsStorageOperations::type_list_t
+            >;
+
+            if (idMap::get(srcTag) == ExpectedTag)
+            {
+                new(&dest) (CurrentType)(reinterpret_cast<const CurrentType&>(src));
+                return;
+            }
+
+            mixed_storage_operations<
+                    type_list_t,
+                    storage_t,
+                    ExpectedTag - 1
+            >::template copy_construct_from<RhsStorageOperations>(
+                    dest,
+                    src,
+                    srcTag
+            );
+        }
+
+        template <typename RhsStorageOperations, typename RhsStorage>
+        static void move_construct_from(
+                Storage& dest,
+                RhsStorage&& src,
+                type_list_tag_t srcTag
+        )
+        {
+            using idMap = type_list_subset_id_mapping<
+                    type_list_t,
+                    typename RhsStorageOperations::type_list_t
+            >;
+
+            if (idMap::get(srcTag) == ExpectedTag)
+            {
+                new(&dest) (CurrentType)(std::move(reinterpret_cast<CurrentType&>(src)));
+                return;
+            }
+
+            mixed_storage_operations<
+                    type_list_t,
+                    storage_t,
+                    ExpectedTag - 1
+            >::template move_construct_from<RhsStorageOperations>(
+                    dest,
+                    std::forward<RhsStorage>(src),
+                    srcTag
+            );
+        }
+
+    private:
+        using CurrentType = typename impl::type_list_get_type_for_id<TL, ExpectedTag>::type;
     };
 
 

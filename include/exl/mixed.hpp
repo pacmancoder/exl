@@ -15,6 +15,11 @@
 
 namespace exl
 {
+    namespace impl { namespace marker
+    {
+        class mixed {};
+    }}
+
     template <typename ... Types>
     class mixed : impl::marker::mixed
     {
@@ -32,8 +37,48 @@ namespace exl
         >::type;
 
     public:
-        template <typename U>
-        explicit mixed(U&& rhs)
+        mixed(const mixed<Types...>& rhs)
+                : storage_()
+                , tag_(0)
+        {
+            // TODO: make specialization without id mapping stage
+            construct_from_subset_by_copy(rhs);
+        }
+
+        mixed(mixed<Types...>&& rhs) noexcept
+                : storage_()
+                , tag_(0)
+        {
+            // TODO: make specialization without id mapping stage
+            construct_from_subset_by_move(std::move(rhs));
+        }
+
+        template <typename ... RhsTypes>
+        mixed(const mixed<RhsTypes...>& rhs)
+                : storage_()
+                , tag_(0)
+        {
+            construct_from_subset_by_copy(rhs);
+        }
+
+        template <typename ... RhsTypes>
+        mixed(mixed<RhsTypes...>&& rhs) noexcept
+                : storage_()
+                , tag_(0)
+        {
+            construct_from_subset_by_move(std::move(rhs));
+        }
+
+        template <
+                typename U,
+                typename = typename std::enable_if<
+                        !std::is_base_of<
+                                impl::marker::mixed,
+                                typename std::decay<U>::type
+                        >::value
+                >::type
+        >
+        mixed(U&& rhs)
                 : storage_()
                 , tag_(tag_of<typename std::decay<U>::type>())
         {
