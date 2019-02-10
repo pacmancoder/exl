@@ -7,8 +7,6 @@
 
 #include <new>
 #include <type_traits>
-
-// only for std::terminate
 #include <exception>
 
 #include <exl/impl/mixed_storage_operations.hpp>
@@ -20,6 +18,15 @@ namespace exl
         class mixed {};
     }}
 
+    /// @brief Represents tagged union type
+    ///
+    /// This class provides tagged union implementation. Any subset of instantiated class can be
+    /// implicitly casted to the its superset (without rtti).
+    /// Value can be acquired either using direct access methods exl::mixed::is() and
+    /// exl::mixed::unwrap() or indirect access methods like exl::mixed::map(), exl::mixed::when()
+    /// exl::mixed::catch(), exl::mixed::unwrap_or, etc.
+    ///
+    /// @tparam Types List of union variants
     template <typename ... Types>
     class mixed : impl::marker::mixed
     {
@@ -37,22 +44,23 @@ namespace exl
         >::type;
 
     public:
+        /// @brief Copy-constructs self from exl::mixed of same type
         mixed(const mixed<Types...>& rhs)
                 : storage_()
                 , tag_(0)
         {
-            // TODO: make specialization without id mapping stage
             construct_from_subset_by_copy(rhs);
         }
 
+        /// @brief Move-constructs self from exl::mixed of same type
         mixed(mixed<Types...>&& rhs) noexcept
                 : storage_()
                 , tag_(0)
         {
-            // TODO: make specialization without id mapping stage
             construct_from_subset_by_move(std::move(rhs));
         }
 
+        /// @brief Copy-constructs self from exl::mixed of different type
         template <typename ... RhsTypes>
         mixed(const mixed<RhsTypes...>& rhs)
                 : storage_()
@@ -61,6 +69,7 @@ namespace exl
             construct_from_subset_by_copy(rhs);
         }
 
+        /// @brief Move-constructs self from exl::mixed of different type
         template <typename ... RhsTypes>
         mixed(mixed<RhsTypes...>&& rhs) noexcept
                 : storage_()
@@ -69,6 +78,8 @@ namespace exl
             construct_from_subset_by_move(std::move(rhs));
         }
 
+        /// @brief Constructs self from specific union variant of self
+        /// @tparam U Union variant type
         template <
                 typename U,
                 typename = typename std::enable_if<
@@ -85,6 +96,8 @@ namespace exl
             construct_from_specific(std::forward<U>(rhs));
         }
 
+        /// @brief Assigns specific union variant of self
+        /// @tparam U Union variant type
         template <
                 typename U,
                 typename = typename std::enable_if<
@@ -112,27 +125,76 @@ namespace exl
             return *this;
         }
 
-        void operator=(mixed<Types...>&) = delete;
+        /// @brief Copy-assigns exl::mixed of the same type
+        template <typename ... RhsTypes>
+        mixed<Types...>& operator=(const mixed<RhsTypes...>& rhs)
+        {
+            using IDMap = impl::type_list_subset_id_mapping<
+                    type_list_t,
+                    typename mixed<RhsTypes...>::type_list_t
+            >;
 
-        void operator=(mixed<Types...>&&) = delete;
+            if (tag_ != IDMap::get(rhs.tag_))
+            {
+                destroy();
+                construct_from_subset_by_copy(rhs);
+            }
+            else
+            {
+                assign_from_subset_by_copy(rhs);
+            }
 
+            return *this;
+        }
+
+        /// @brief Move-assigns exl::mixed of same type
+        template <typename ... RhsTypes>
+        mixed<Types...>& operator=(mixed<RhsTypes...>&& rhs) noexcept
+        {
+            using IDMap = impl::type_list_subset_id_mapping<
+                    type_list_t,
+                    typename mixed<RhsTypes...>::type_list_t
+            >;
+
+            if (tag_ != IDMap::get(rhs.tag_))
+            {
+                destroy();
+                construct_from_subset_by_move(std::forward<mixed<RhsTypes...>>(rhs));
+            }
+            else
+            {
+                assign_from_subset_by_move(std::forward<mixed<RhsTypes...>>(rhs));
+            }
+
+            return *this;
+        }
+
+        /// @brief Checks if current stored variant is same as specified type U
+        /// @tparam U Type to perform check for
+        /// @return True when stored type is same as specified type U, false in other cases.
         template <typename U>
         bool is()
         {
             return tag_of<U>() == tag_;
         }
 
+        /// @brief Returns reference to the value with specified type.
+        ///
+        /// Calls std::terminate if stored type is not equal to the requested type.
+        /// Please use this method only with conjunction with exl::mixed::is() of when type is
+        /// clearly known at the moment of call (e.g. right after explicit construction of
+        /// ext::mixed) In other cases please use indirect access methods.
+        ///
+        /// @tparam U Requested type to unwrap
+        /// @return Reference to unwrapped type
         template <typename U>
         U& unwrap()
         {
-            if (tag() != tag_of<U>())
-            {
-                std::terminate();
-            }
-
+            assert_type<U>();
             return unsafe_unwrap<U>();
         }
 
+        /// Calls destructor for last stored variant in self
         ~mixed()
         {
             destroy();
@@ -142,6 +204,15 @@ namespace exl
         using StorageOperations = impl::mixed_storage_operations<type_list_t, storage_t>;
 
     private:
+        template <typename U>
+        void assert_type()
+        {
+            if (tag() != tag_of<U>())
+            {
+                std::terminate();
+            }
+        }
+
         void destroy()
         {
             StorageOperations::destroy(storage_, tag_);
@@ -157,34 +228,76 @@ namespace exl
         void construct_from_subset_by_copy(const U& rhs)
         {
             using RhsStorageOperations = typename U::StorageOperations;
-            using RhsTL = typename U::type_list_t;
+            using RhsStorage = typename U::storage_t;
 
-            StorageOperations::template copy_construct_from<RhsStorageOperations>(
-                    storage_,
+            using RhsIDMap = impl::type_list_subset_id_mapping<
+                    type_list_t,
+                    typename U::type_list_t
+            >;
+
+            RhsStorageOperations::copy_construct_from(
+                    reinterpret_cast<RhsStorage&>(storage_),
                     rhs.storage_,
                     rhs.tag_
             );
-
-            tag_ = impl::type_list_subset_id_mapping<type_list_t, RhsTL>::get(
-                    rhs.tag_
-            );
+            tag_ = RhsIDMap::get(rhs.tag_);
         }
 
         template <typename U>
         void construct_from_subset_by_move(U&& rhs)
         {
             using RhsStorageOperations = typename U::StorageOperations;
-            using RhsTL = typename U::type_list_t;
+            using RhsStorage = typename U::storage_t;
 
-            StorageOperations::template move_construct_from<RhsStorageOperations>(
-                    storage_,
+            using RhsIDMap = impl::type_list_subset_id_mapping<
+                    type_list_t,
+                    typename U::type_list_t
+            >;
+
+            RhsStorageOperations::move_construct_from(
+                    reinterpret_cast<RhsStorage&>(storage_),
                     std::move(rhs.storage_),
                     rhs.tag_
             );
+            tag_ = RhsIDMap::get(rhs.tag_);
+        }
 
-            tag_ = impl::type_list_subset_id_mapping<type_list_t, RhsTL>::get(
+        template <typename U>
+        void assign_from_subset_by_copy(const U& rhs)
+        {
+            using RhsStorageOperations = typename U::StorageOperations;
+            using RhsStorage = typename U::storage_t;
+
+            using RhsIDMap = impl::type_list_subset_id_mapping<
+                    type_list_t,
+                    typename U::type_list_t
+            >;
+
+            RhsStorageOperations::copy_assign_from(
+                    reinterpret_cast<RhsStorage&>(storage_),
+                    rhs.storage_,
                     rhs.tag_
             );
+            tag_ = RhsIDMap::get(rhs.tag_);
+        }
+
+        template <typename U>
+        void assign_from_subset_by_move(U&& rhs)
+        {
+            using RhsStorageOperations = typename U::StorageOperations;
+            using RhsStorage = typename U::storage_t;
+
+            using RhsIDMap = impl::type_list_subset_id_mapping<
+                    type_list_t,
+                    typename U::type_list_t
+            >;
+
+            RhsStorageOperations::move_assign_from(
+                    reinterpret_cast<RhsStorage&>(storage_),
+                    std::move(rhs.storage_),
+                    rhs.tag_
+            );
+            tag_ = RhsIDMap::get(rhs.tag_);
         }
 
         template <typename U>

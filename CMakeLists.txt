@@ -8,6 +8,8 @@ cmake_minimum_required(VERSION 3.7)
 project(exl)
 
 set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_library(${PROJECT_NAME} INTERFACE)
 target_include_directories(${PROJECT_NAME} INTERFACE include)
@@ -22,3 +24,4 @@ add_executable(${TEST_PROJECT_NAME}
 
 include_directories(${TEST_PROJECT_NAME} third-party)
 target_link_libraries(${TEST_PROJECT_NAME} PRIVATE ${PROJECT_NAME})
+target_compile_options(${TEST_PROJECT_NAME} PRIVATE -Werror -Wall -Wextra -Wpedantic)

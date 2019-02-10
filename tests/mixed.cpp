@@ -5,7 +5,6 @@
 
 #include <string>
 #include <algorithm>
-#include <type_traits>
 #include <functional>
 
 #include <catch2/catch.hpp>
@@ -23,29 +22,46 @@ TEST_CASE("Mixed type construction test", "[mixed]")
     CallCounter calls;
     ClassMock mock(1, &calls);
 
-    SECTION("Copy constructor called")
+    SECTION("Copy construction")
     {
         Mixed m(mock);
-        REQUIRE(calls.count(CallType::Move, mock.tag()) == 0);
-        REQUIRE(calls.count(CallType::Copy, mock.tag()) == 1);
-        REQUIRE(calls.count(CallType::Construct, as_copied_tag(mock.tag())) == 1);
+
+        SECTION("Was not moved")
+        {
+            REQUIRE(calls.count(CallType::Move, mock.tag()) == 0);
+        }
+
+        SECTION("Was copy constructed")
+        {
+            REQUIRE(calls.count(CallType::Copy, mock.tag()) == 1);
+            REQUIRE(calls.count(CallType::Construct, as_copied_tag(mock.tag())) == 1);
+        }
+
+        SECTION("Has correct type")
+        {
+            REQUIRE(m.is<ClassMock>());
+        }
     }
 
-    SECTION("Move constructor called")
+    SECTION("Move construction")
     {
         Mixed m(std::move(mock));
-        REQUIRE(calls.count(CallType::Move, mock.tag()) == 1);
-        REQUIRE(calls.count(CallType::Copy, mock.tag()) == 0);
-        REQUIRE(calls.count(CallType::Construct, as_moved_tag(mock.tag())) == 1);
-    }
 
-    SECTION("Correct tag assigned on construction")
-    {
-        Mixed m(ClassMock(1));
-        REQUIRE(m.is<ClassMock>() == true);
+        SECTION("Was not copied")
+        {
+            REQUIRE(calls.count(CallType::Copy, mock.tag()) == 0);
+        }
 
-        Mixed m2(char(255));
-        REQUIRE(m2.is<char>() == true);
+        SECTION("Was move constructed")
+        {
+            REQUIRE(calls.count(CallType::Move, mock.tag()) == 1);
+            REQUIRE(calls.count(CallType::Construct, as_moved_tag(mock.tag())) == 1);
+        }
+
+        SECTION("Has correct type")
+        {
+            REQUIRE(m.is<ClassMock>());
+        }
     }
 }
 
@@ -60,7 +76,6 @@ TEST_CASE("Mixed type correct destructor call test", "[mixed]")
         {
             Mixed m(mock);
         }
-        // Destroyed
 
         REQUIRE(calls.count(CallType::Destroy, as_copied_tag(mock.tag())) == 1);
     }
@@ -71,68 +86,101 @@ TEST_CASE("Mixed type assignment operators test", "[mixed]")
     using Mixed = exl::mixed<int, ClassMock, SecondClassMock>;
     CallCounter calls;
 
-    SECTION("Copy-assignment different type")
+    Mixed m1(ClassMock(1, &calls));
+    auto m1_tag = m1.unwrap<ClassMock>().tag();
+
+    SECTION("Assign to different type")
     {
-        ClassMock mock1(1, &calls);
-        SecondClassMock mock2(2, &calls);
+        SECTION("Copy assign")
+        {
+            SecondClassMock mockForCopy(2, &calls);
+            m1 = mockForCopy;
 
-        Mixed m(mock1);
-        m = mock2;
+            SECTION("Is copy constructed")
+            {
+                REQUIRE(calls.count(CallType::Construct, as_copied_tag(2)) == 1);
+                REQUIRE(calls.count(CallType::Copy, 2) == 1);
+            }
 
-        // Old object destroyed, new -- copy-constructed
-        REQUIRE(calls.count(CallType::Destroy, as_copied_tag(1)) == 1);
-        REQUIRE(calls.count(CallType::Construct, as_copied_tag(2)) == 1);
-        REQUIRE(calls.count(CallType::Copy, 2) == 1);
+            SECTION("Is previous value deleted")
+            {
+                REQUIRE(calls.count(CallType::Destroy, m1_tag) == 1);
+            }
+        }
+
+        SECTION("Move assign")
+        {
+            m1 = SecondClassMock(2, &calls);
+
+            SECTION("Is move constructed")
+            {
+                REQUIRE(calls.count(CallType::Construct, as_moved_tag(2)) == 1);
+                REQUIRE(calls.count(CallType::Move, 2) == 1);
+            }
+
+            SECTION("Is previous value deleted")
+            {
+                REQUIRE(calls.count(CallType::Destroy, m1_tag) == 1);
+            }
+        }
     }
 
-    SECTION("Move-assignment of different type")
+    SECTION("Assign to same type")
     {
-        ClassMock mock1(1, &calls);
-        SecondClassMock mock2(2, &calls);
+        SECTION("Copy assign")
+        {
+            ClassMock mockForCopy(2, &calls);
+            m1 = mockForCopy;
 
-        Mixed m(mock1);
-        m = std::move(mock2);
+            SECTION("Is not constructed")
+            {
+                REQUIRE(calls.count(CallType::Construct, as_copied_tag(2)) == 0);
+            }
 
-        // Old object destroyed, new -- copy-constructed
-        REQUIRE(calls.count(CallType::Destroy, as_copied_tag(1)) == 1);
-        REQUIRE(calls.count(CallType::Construct, as_moved_tag(2)) == 1);
-        REQUIRE(calls.count(CallType::Move, 2) == 1);
-    }
+            SECTION("Is previous value alive")
+            {
+                REQUIRE(calls.count(CallType::Destroy, m1_tag) == 0);
+            }
 
-    SECTION("Copy-assignment of same type")
-    {
-        ClassMock mock1(1, &calls);
-        ClassMock mock2(2, &calls);
+            SECTION("Is copy assigned")
+            {
+                REQUIRE(calls.count(CallType::Assign, m1_tag) == 1);
+                REQUIRE(calls.count(CallType::Copy, 2) == 1);
+            }
 
-        Mixed m(mock1);
-        m = mock2;
+            SECTION("Is assigned value correct")
+            {
+                REQUIRE(m1.is<ClassMock>());
+                REQUIRE(m1.unwrap<ClassMock>().original_tag() == 2);
+            }
+        }
 
-        // Old object NOT destroyed, new -- copied (not constructed)
-        REQUIRE(calls.count(CallType::Destroy, as_copied_tag(1)) == 0);
-        REQUIRE(calls.count(CallType::Construct, as_copied_tag(2)) == 0);
-        REQUIRE(calls.count(CallType::Assign, as_copied_tag(1)) == 1);
-        REQUIRE(calls.count(CallType::Copy, 2) == 1);
+        SECTION("Move assign")
+        {
+            m1 = ClassMock(2, &calls);
 
-        REQUIRE(m.is<ClassMock>());
-        REQUIRE(m.unwrap<ClassMock>().tag() == as_copied_tag(2));
-    }
+            SECTION("Is not constructed")
+            {
+                REQUIRE(calls.count(CallType::Construct, as_moved_tag(2)) == 0);
+            }
 
-    SECTION("Move-assignment of same type")
-    {
-        ClassMock mock1(1, &calls);
-        ClassMock mock2(2, &calls);
+            SECTION("Is previous value alive")
+            {
+                REQUIRE(calls.count(CallType::Destroy, m1_tag) == 0);
+            }
 
-        Mixed m(mock1);
-        m = std::move(mock2);
+            SECTION("Is move assigned")
+            {
+                REQUIRE(calls.count(CallType::Assign, m1_tag) == 1);
+                REQUIRE(calls.count(CallType::Move, 2) == 1);
+            }
 
-        // Old object NOT destroyed, new -- moved (not constructed)
-        REQUIRE(calls.count(CallType::Destroy, as_copied_tag(1)) == 0);
-        REQUIRE(calls.count(CallType::Construct, as_moved_tag(2)) == 0);
-        REQUIRE(calls.count(CallType::Assign, as_copied_tag(1)) == 1);
-        REQUIRE(calls.count(CallType::Move, 2) == 1);
-
-        REQUIRE(m.is<ClassMock>());
-        REQUIRE(m.unwrap<ClassMock>().tag() == as_moved_tag(2));
+            SECTION("Is assigned value correct")
+            {
+                REQUIRE(m1.is<ClassMock>());
+                REQUIRE(m1.unwrap<ClassMock>().original_tag() == 2);
+            }
+        }
     }
 }
 
@@ -143,100 +191,227 @@ TEST_CASE("Mixed type construct from another mixed test", "[mixed]")
 
     CallCounter calls;
 
-    SECTION("Constructed from mixed with string my copy")
-    {
-        const std::string GREETING("hello there!");
-
-        MixedSubset m1(GREETING);
-        Mixed m2(m1);
-
-        REQUIRE(m2.is<std::string>());
-        REQUIRE(m2.unwrap<std::string>() == GREETING);
-    }
-
-    SECTION("Constructed from same type with mock by copy")
-    {
-        Mixed m1(ClassMock(1, &calls));
-        Mixed m2(m1);
-
-        REQUIRE(m2.is<ClassMock>());
-
-        // m1 construction
-        REQUIRE(calls.count(CallType::Move, 1) == 1);
-        REQUIRE(calls.count(CallType::Construct, as_moved_tag(1)) == 1);
-        // m2 construction
-        REQUIRE(calls.count(CallType::Copy, as_moved_tag(1)) == 1);
-        REQUIRE(calls.count(CallType::Construct, as_copied_tag(as_moved_tag(1))) == 1);
-    }
-
-    SECTION("Constructed from mixed with class mock by copy")
+    SECTION("Constructed with same mixed type")
     {
         MixedSubset m1(ClassMock(1, &calls));
-        Mixed m2(m1);
+        auto m1_tag = m1.unwrap<ClassMock>().tag();
 
-        REQUIRE(m2.is<ClassMock>());
+        SECTION("By copy")
+        {
+            Mixed m2(m1);
 
-        // m1 construction
-        REQUIRE(calls.count(CallType::Move, 1) == 1);
-        REQUIRE(calls.count(CallType::Construct, as_moved_tag(1)) == 1);
-        // m2 construction
-        REQUIRE(calls.count(CallType::Copy, as_moved_tag(1)) == 1);
-        REQUIRE(calls.count(CallType::Construct, as_copied_tag(as_moved_tag(1))) == 1);
+            SECTION("Is assigned value correct")
+            {
+                REQUIRE(m2.is<ClassMock>());
+                REQUIRE(m2.unwrap<ClassMock>().original_tag() == 1);
+            }
+
+            SECTION("Is copy constructed")
+            {
+                REQUIRE(calls.count(CallType::Construct, as_copied_tag(m1_tag)) == 1);
+                REQUIRE(calls.count(CallType::Copy, m1_tag) == 1);
+            }
+        }
+
+        SECTION("By move")
+        {
+            Mixed m2(std::move(m1));
+
+            SECTION("Is assigned value correct")
+            {
+                REQUIRE(m2.is<ClassMock>());
+                REQUIRE(m2.unwrap<ClassMock>().original_tag() == 1);
+            }
+
+            SECTION("Is move constructed")
+            {
+                REQUIRE(calls.count(CallType::Construct, as_moved_tag(m1_tag)) == 1);
+                REQUIRE(calls.count(CallType::Move, m1_tag) == 1);
+            }
+        }
     }
 
-    SECTION("Constructed from mixed with string by move")
-    {
-        const std::string GREETING("hello there!");
-
-        MixedSubset m1(GREETING);
-        Mixed m2(std::move(m1));
-
-        REQUIRE(m2.is<std::string>());
-        REQUIRE(m2.unwrap<std::string>() == GREETING);
-    }
-
-    SECTION("Constructed from same type with mock by move")
+    SECTION("Constructed with different mixed type")
     {
         Mixed m1(ClassMock(1, &calls));
-        Mixed m2(std::move(m1));
+        auto m1_tag = m1.unwrap<ClassMock>().tag();
 
-        REQUIRE(m2.is<ClassMock>());
+        SECTION("By copy")
+        {
+            Mixed m2(m1);
 
-        // m1 construction
-        REQUIRE(calls.count(CallType::Move, 1) == 1);
-        REQUIRE(calls.count(CallType::Construct, as_moved_tag(1)) == 1);
-        // m2 construction
-        REQUIRE(calls.count(CallType::Move, as_moved_tag(1)) == 1);
-        REQUIRE(calls.count(CallType::Construct, as_moved_tag(as_moved_tag(1))) == 1);
+            SECTION("Is assigned value correct")
+            {
+                REQUIRE(m2.is<ClassMock>());
+                REQUIRE(m2.unwrap<ClassMock>().original_tag() == 1);
+            }
+
+            SECTION("Is copy constructed")
+            {
+                REQUIRE(calls.count(CallType::Construct, as_copied_tag(m1_tag)) == 1);
+                REQUIRE(calls.count(CallType::Copy, m1_tag) == 1);
+            }
+        }
+
+        SECTION("By move")
+        {
+            Mixed m2(std::move(m1));
+
+            SECTION("Is assigned value correct")
+            {
+                REQUIRE(m2.is<ClassMock>());
+                REQUIRE(m2.unwrap<ClassMock>().original_tag() == 1);
+            }
+
+            SECTION("Is move constructed")
+            {
+                REQUIRE(calls.count(CallType::Construct, as_moved_tag(m1_tag)) == 1);
+                REQUIRE(calls.count(CallType::Move, m1_tag) == 1);
+            }
+        }
     }
+}
 
-    SECTION("Constructed from mixed with class mock by move")
+TEST_CASE("Mixed type assign from another mixed test", "[mixed]")
+{
+    using Mixed = exl::mixed<std::string, char, SecondClassMock, ClassMock>;
+    using MixedSubset = exl::mixed<ClassMock, SecondClassMock>;
+
+    CallCounter calls;
+
+    SECTION("Copy-assigned correctly when variants are different")
     {
-        MixedSubset m1(ClassMock(1, &calls));
-        Mixed m2(std::move(m1));
+        Mixed m1(ClassMock(1, &calls));
+        MixedSubset m2(SecondClassMock(2, &calls));
 
-        REQUIRE(m2.is<ClassMock>());
+        auto m1_tag = m1.unwrap<ClassMock>().tag();
+        auto m2_tag = m2.unwrap<SecondClassMock>().tag();
 
-        // m1 construction
-        REQUIRE(calls.count(CallType::Move, 1) == 1);
-        REQUIRE(calls.count(CallType::Construct, as_moved_tag(1)) == 1);
-        // m2 construction
-        REQUIRE(calls.count(CallType::Move, as_moved_tag(1)) == 1);
-        REQUIRE(calls.count(CallType::Construct, as_moved_tag(as_moved_tag(1))) == 1);
+        m1 = m2;
+
+        SECTION("New value is correct")
+        {
+            REQUIRE(m1.is<SecondClassMock>());
+            REQUIRE(m1.unwrap<SecondClassMock>().original_tag() == 2);
+        }
+
+        SECTION("Assignment operator wasn't called")
+        {
+            REQUIRE(calls.count(CallType::Assign, m1_tag) == 0);
+        }
+
+        SECTION("Old value was destroyed")
+        {
+            REQUIRE(calls.count(CallType::Destroy, m1_tag) == 1);
+        }
+
+        SECTION("Copy constructor was called")
+        {
+            REQUIRE(calls.count(CallType::Construct, as_copied_tag(m2_tag)) == 1);
+            REQUIRE(calls.count(CallType::Copy, m2_tag) == 1);
+        }
+    }
+
+    SECTION("Copy-assigned correctly when variants are the same")
+    {
+        Mixed m1(ClassMock(1, &calls));
+        MixedSubset m2(ClassMock(2, &calls));
+
+        auto m1_tag = m1.unwrap<ClassMock>().tag();
+        auto m2_tag = m2.unwrap<ClassMock>().tag();
+
+        m1 = m2;
+
+        SECTION("New value is correct")
+        {
+            REQUIRE(m1.is<ClassMock>());
+            REQUIRE(m1.unwrap<ClassMock>().original_tag() == 2);
+        }
+
+        SECTION("Old value wasn't destroyed")
+        {
+            REQUIRE(calls.count(CallType::Destroy, m1_tag) == 0);
+        }
+
+        SECTION("New value wasn't constructed")
+        {
+            REQUIRE(calls.count(CallType::Construct, as_copied_tag(m2_tag)) == 0);
+        }
+
+        SECTION("Copy assignment was called")
+        {
+            REQUIRE(calls.count(CallType::Assign, m1_tag) == 1);
+            REQUIRE(calls.count(CallType::Copy, m2_tag) == 1);
+        }
+    }
+
+    SECTION("Move-assigned correctly when variants are different")
+    {
+        Mixed m1(ClassMock(1, &calls));
+        MixedSubset m2(SecondClassMock(2, &calls));
+
+        auto m1_tag = m1.unwrap<ClassMock>().tag();
+        auto m2_tag = m2.unwrap<SecondClassMock>().tag();
+
+        m1 = std::move(m2);
+
+        SECTION("New value is correct")
+        {
+            REQUIRE(m1.is<SecondClassMock>());
+            REQUIRE(m1.unwrap<SecondClassMock>().original_tag() == 2);
+        }
+
+        SECTION("Assignment operator wasn't called")
+        {
+            REQUIRE(calls.count(CallType::Assign, m1_tag) == 0);
+        }
+
+        SECTION("Old value was destroyed")
+        {
+            REQUIRE(calls.count(CallType::Destroy, m1_tag) == 1);
+        }
+
+        SECTION("Move constructor was called")
+        {
+            REQUIRE(calls.count(CallType::Construct, as_moved_tag(m2_tag)) == 1);
+            REQUIRE(calls.count(CallType::Move, m2_tag) == 1);
+        }
+    }
+
+    SECTION("Move-assigned correctly when variants are the same")
+    {
+        Mixed m1(ClassMock(1, &calls));
+        MixedSubset m2(ClassMock(2, &calls));
+
+        auto m1_tag = m1.unwrap<ClassMock>().tag();
+        auto m2_tag = m2.unwrap<ClassMock>().tag();
+
+        m1 = std::move(m2);
+
+        SECTION("New value is correct")
+        {
+            REQUIRE(m1.is<ClassMock>());
+            REQUIRE(m1.unwrap<ClassMock>().original_tag() == 2);
+        }
+
+        SECTION("Old value wasn't destroyed")
+        {
+            REQUIRE(calls.count(CallType::Destroy, m1_tag) == 0);
+        }
+
+        SECTION("New value wasn't constructed")
+        {
+            REQUIRE(calls.count(CallType::Construct, as_moved_tag(m2_tag)) == 0);
+        }
+
+        SECTION("Move assignment was called")
+        {
+            REQUIRE(calls.count(CallType::Assign, m1_tag) == 1);
+            REQUIRE(calls.count(CallType::Move, m2_tag) == 1);
+        }
     }
 }
 
-TEST_CASE("Mixed type assign from another mixed test", "[mixed][.]")
-{
-    REQUIRE(false);
-}
+TEST_CASE("Mixed type in-place construction test", "[mixed][.]") {}
 
-TEST_CASE("Mixed type in-place construction test", "[mixed][.]")
-{
-    REQUIRE(false);
-}
-
-TEST_CASE("Mixed type emplace test", "[mixed][.]")
-{
-    REQUIRE(false);
-}
+TEST_CASE("Mixed type emplace test", "[mixed][.]") {}

@@ -8,5 +8,7 @@
 namespace exl
 {
     /// @brief Represents absence of typed value
+    ///
+    /// Usually used as no-value marker
     struct none {};
 }

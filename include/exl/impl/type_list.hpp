@@ -273,7 +273,7 @@ namespace exl { namespace impl
     {
     public:
 
-        static type_list_tag_t get(type_list_tag_t targetID)
+        static type_list_tag_t get(type_list_tag_t)
         {
             return type_list_get_type_id<
                     TL,

@@ -39,60 +39,79 @@ namespace exl { namespace impl
             );
         }
 
-        template <typename RhsStorageOperations, typename RhsStorage>
         static void copy_construct_from(
                 Storage& dest,
-                const RhsStorage& src,
+                const Storage& src,
                 type_list_tag_t srcTag
         )
         {
-            using idMap = type_list_subset_id_mapping<
-                    type_list_t,
-                    typename RhsStorageOperations::type_list_t
-            >;
-
-            if (idMap::get(srcTag) == ExpectedTag)
+            if (srcTag == ExpectedTag)
             {
                 new(&dest) (CurrentType)(reinterpret_cast<const CurrentType&>(src));
                 return;
             }
 
-            mixed_storage_operations<
-                    type_list_t,
-                    storage_t,
-                    ExpectedTag - 1
-            >::template copy_construct_from<RhsStorageOperations>(
+            mixed_storage_operations<type_list_t, storage_t, ExpectedTag - 1>::copy_construct_from(
                     dest,
                     src,
                     srcTag
             );
         }
 
-        template <typename RhsStorageOperations, typename RhsStorage>
         static void move_construct_from(
                 Storage& dest,
-                RhsStorage&& src,
+                Storage&& src,
                 type_list_tag_t srcTag
         )
         {
-            using idMap = type_list_subset_id_mapping<
-                    type_list_t,
-                    typename RhsStorageOperations::type_list_t
-            >;
-
-            if (idMap::get(srcTag) == ExpectedTag)
+            if (srcTag == ExpectedTag)
             {
                 new(&dest) (CurrentType)(std::move(reinterpret_cast<CurrentType&>(src)));
                 return;
             }
 
-            mixed_storage_operations<
-                    type_list_t,
-                    storage_t,
-                    ExpectedTag - 1
-            >::template move_construct_from<RhsStorageOperations>(
+            mixed_storage_operations<type_list_t, storage_t, ExpectedTag - 1>::move_construct_from(
                     dest,
-                    std::forward<RhsStorage>(src),
+                    std::forward<Storage>(src),
+                    srcTag
+            );
+        }
+
+        static void copy_assign_from(
+                Storage& dest,
+                const Storage& src,
+                type_list_tag_t srcTag
+        )
+        {
+            if (srcTag == ExpectedTag)
+            {
+                reinterpret_cast<CurrentType&>(dest) = reinterpret_cast<const CurrentType&>(src);
+                return;
+            }
+
+            mixed_storage_operations<type_list_t, storage_t, ExpectedTag - 1>::copy_assign_from(
+                    dest,
+                    src,
+                    srcTag
+            );
+        }
+
+        static void move_assign_from(
+                Storage& dest,
+                Storage&& src,
+                type_list_tag_t srcTag
+        )
+        {
+            if (srcTag == ExpectedTag)
+            {
+                reinterpret_cast<CurrentType&>(dest) =
+                        std::move(reinterpret_cast<CurrentType&>(src));
+                return;
+            }
+
+            mixed_storage_operations<type_list_t, storage_t, ExpectedTag - 1>::move_assign_from(
+                    dest,
+                    std::move(src),
                     srcTag
             );
         }
@@ -111,24 +130,41 @@ namespace exl { namespace impl
             reinterpret_cast<CurrentType*>(&storage)->~CurrentType();
         }
 
-        template <typename RhsStorageOperations, typename RhsStorage>
         static void copy_construct_from(
                 Storage& dest,
-                const RhsStorage& src,
+                const Storage& src,
                 type_list_tag_t
         )
         {
             new(&dest) (CurrentType)(reinterpret_cast<const CurrentType&>(src));
         }
 
-        template <typename RhsStorageOperations, typename RhsStorage>
         static void move_construct_from(
                 Storage& dest,
-                RhsStorage&& src,
+                Storage&& src,
                 type_list_tag_t
         )
         {
             new(&dest) (CurrentType)(std::move(reinterpret_cast<CurrentType&>(src)));
+        }
+
+        static void copy_assign_from(
+                Storage& dest,
+                const Storage& src,
+                type_list_tag_t
+        )
+        {
+            reinterpret_cast<CurrentType&>(dest) = reinterpret_cast<const CurrentType&>(src);
+        }
+
+        static void move_assign_from(
+                Storage& dest,
+                Storage&& src,
+                type_list_tag_t
+        )
+        {
+            reinterpret_cast<CurrentType&>(dest) =
+                    std::move(reinterpret_cast<CurrentType&>(src));
         }
 
     private:
