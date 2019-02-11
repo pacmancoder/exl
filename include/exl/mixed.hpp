@@ -18,6 +18,20 @@ namespace exl
         class mixed {};
     }}
 
+    template <typename T>
+    class in_place_type_t
+    {
+    public:
+        explicit in_place_type_t() = default;
+    };
+
+#if __cpp_variable_templates >= 201304
+
+    template <typename T>
+    constexpr in_place_type_t<T> in_place_type;
+
+#endif
+
     /// @brief Represents tagged union type
     ///
     /// This class provides tagged union implementation. Any subset of instantiated class can be
@@ -33,7 +47,7 @@ namespace exl
     public:
         template <typename ... FTypes>
         friend
-        struct mixed;
+        class mixed;
 
     public:
         using tag_t = uint8_t;
@@ -94,6 +108,17 @@ namespace exl
                 , tag_(tag_of<typename std::decay<U>::type>())
         {
             construct_from_specific(std::forward<U>(rhs));
+        }
+
+        /// @brief Constructs mixed with value constructed in-place
+        /// @tparam U type to in-place construct
+        /// @tparam Args in-place construction arguments
+        template <typename U, typename ... Args>
+        explicit mixed(in_place_type_t<U>, Args&& ... args)
+                : storage_()
+                , tag_(tag_of<U>())
+        {
+            construct_in_place<U>(std::forward<Args>(args)...);
         }
 
         /// @brief Assigns specific union variant of self
@@ -167,6 +192,17 @@ namespace exl
             }
 
             return *this;
+        }
+
+        /// @brief Constructs new value in-place
+        /// @tparam U Type of new value to construct
+        /// @tparam Args Arguments to the value which is being constructed
+        template <typename U, typename ... Args>
+        void emplace(Args&& ... args)
+        {
+            destroy();
+            construct_in_place<U>(std::forward<Args>(args)...);
+            tag_ = tag_of<U>();
         }
 
         /// @brief Checks if current stored variant is same as specified type U
@@ -260,6 +296,12 @@ namespace exl
                     rhs.tag_
             );
             tag_ = RhsIDMap::get(rhs.tag_);
+        }
+
+        template <typename T, typename ... Args>
+        void construct_in_place(Args&& ... args)
+        {
+            new(&storage_) T(std::forward<Args>(args)...);
         }
 
         template <typename U>

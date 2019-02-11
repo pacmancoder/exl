@@ -412,6 +412,110 @@ TEST_CASE("Mixed type assign from another mixed test", "[mixed]")
     }
 }
 
-TEST_CASE("Mixed type in-place construction test", "[mixed][.]") {}
+TEST_CASE("Mixed type emplace test", "[mixed]")
+{
+    using Mixed = exl::mixed<SecondClassMock, ClassMock, std::string>;
 
-TEST_CASE("Mixed type emplace test", "[mixed][.]") {}
+    CallCounter calls;
+
+    Mixed m(ClassMock(1, &calls));
+    auto m_tag = m.unwrap<ClassMock>().tag();
+
+    m.emplace<SecondClassMock>(2, &calls);
+
+    SECTION("Is old class destroyed")
+    {
+        REQUIRE(calls.count(CallType::Destroy, m_tag));
+    }
+
+    SECTION("Is new value constructed")
+    {
+        REQUIRE(calls.count(CallType::Construct, 2) == 1);
+    }
+
+    SECTION("Is mixed holds new value")
+    {
+        REQUIRE(m.is<SecondClassMock>());
+        REQUIRE(m.unwrap<SecondClassMock>().original_tag() == 2);
+    }
+
+    SECTION("New value is not constructed from intermediate object")
+    {
+        REQUIRE(calls.count(CallType::Construct, as_copied_tag(2)) == 0);
+        REQUIRE(calls.count(CallType::Construct, as_moved_tag(2)) == 0);
+    }
+
+    SECTION("New value is not assigned from intermediate object")
+    {
+        REQUIRE(calls.count(CallType::Assign, 1) == 0);
+    }
+
+}
+
+TEST_CASE("Mixed type in-place construction test", "[mixed]")
+{
+    using Mixed = exl::mixed<SecondClassMock, ClassMock, std::string>;
+
+    CallCounter calls;
+
+    Mixed m(exl::in_place_type_t<ClassMock>(), 1, &calls);
+
+    SECTION("Is new value constructed")
+    {
+        REQUIRE(calls.count(CallType::Construct, 1) == 1);
+    }
+
+    SECTION("New value is correct")
+    {
+        REQUIRE(m.is<ClassMock>());
+        REQUIRE(m.unwrap<ClassMock>().original_tag() == 1);
+        REQUIRE(m.unwrap<ClassMock>().tag() == 1);
+    }
+
+    SECTION("New value is not constructed from intermediate value")
+    {
+        REQUIRE(calls.count(CallType::Construct, as_copied_tag(1)) == 0);
+        REQUIRE(calls.count(CallType::Construct, as_moved_tag(1)) == 0);
+    }
+}
+
+/*
+ * TODO: Unit tests check list [IN PROGRESS]
+ *
+ * exl::mixed will have API for safe value unwrapping similar to the
+ * Rust's std::Rusult, std::Some, etc.
+ *
+ * // unwrap_or returns by value and calls F if mixed is not T
+ * - unwrap_or<T>(F)
+ *
+ * // Invokes F if T is base_of or is_same
+ * - when<T>(F) -> Self
+ *     - T is base_of of is_same
+ *
+ * - exl::match::when<T, F>
+ *     - has associated type expected_type_t
+ *     - has method invoke
+ *     - stores functor F
+ *
+ * - exl::match::otherwise<F>
+ *     - has method invoke
+ *     - stores functor F
+ *
+ * - exl::impl::check_match_coverage<Types...>
+ *     - Types - exl::marker::matcher (exl::when, exl::else
+ * // Map type
+ * auto mapped = m.map<int>(
+ *         exl::match::when<char>([](char & v)
+ *         {
+ *             return v + 1;
+ *         }),
+ *         exl::match::when<std::string>([](std::string&)
+ *         {
+ *             return 42;
+ *         }),
+ *         exl::match::else([]()
+ *         {
+ *             return 0;
+ *         })
+ * );
+ */
