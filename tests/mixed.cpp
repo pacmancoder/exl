@@ -479,9 +479,18 @@ TEST_CASE("Mixed type in-place construction test", "[mixed]")
     }
 }
 
-/*
- * TODO: Unit tests check list [IN PROGRESS]
- *
+// exl::mixed methods
+// TODO: exl::mixed::is_exact
+// TODO: exl::mixed::unwrap_or
+// TODO: exl::mixed::on
+// TODO: exl::mixed::on_exact
+
+// exl common matcher types <auto include to mixed>
+// TODO: exl::when
+// TODO: exl::when_exact
+// TODO: exl::otherwise
+
+/* TODO: exl::mixed::match
  * exl::mixed will have API for safe value unwrapping similar to the
  * Rust's std::Rusult, std::Some, etc.
  *
@@ -492,28 +501,26 @@ TEST_CASE("Mixed type in-place construction test", "[mixed]")
  * - when<T>(F) -> Self
  *     - T is base_of of is_same
  *
- * - exl::match::when<T, F>
+ * - exl::when<T, F>
  *     - has associated type expected_type_t
  *     - has method invoke
  *     - stores functor F
  *
- * - exl::match::otherwise<F>
+ * - exl::otherwise<F>
  *     - has method invoke
  *     - stores functor F
  *
- * - exl::impl::check_match_coverage<Types...>
- *     - Types - exl::marker::matcher (exl::when, exl::else
  * // Map type
- * auto mapped = m.map<int>(
- *         exl::match::when<char>([](char & v)
+ * auto mapped = m.match<int>(
+ *         exl::when<char>([](char & v)
  *         {
  *             return v + 1;
  *         }),
- *         exl::match::when<std::string>([](std::string&)
+ *         exl::when<std::string>([](std::string&)
  *         {
  *             return 42;
  *         }),
- *         exl::match::else([]()
+ *         exl::otherwise([]()
  *         {
  *             return 0;
  *         })
