@@ -9,6 +9,8 @@
 #include <type_traits>
 #include <exception>
 
+#include <exl/matchers.hpp>
+
 #include <exl/impl/mixed_storage_operations.hpp>
 
 namespace exl
