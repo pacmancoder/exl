@@ -6,6 +6,7 @@
 #include <string>
 #include <algorithm>
 #include <functional>
+#include <exception>
 
 #include <catch2/catch.hpp>
 
@@ -62,6 +63,40 @@ TEST_CASE("Mixed type construction test", "[mixed]")
         {
             REQUIRE(m.is<ClassMock>());
         }
+    }
+}
+
+TEST_CASE("Type check test", "[mixed]")
+{
+    using Mixed = exl::mixed<std::runtime_error, int, char, std::logic_error>;
+
+    SECTION("When type is exact equal")
+    {
+        Mixed m(399);
+        REQUIRE(m.is<int>());
+    }
+
+    SECTION("When type is exact equal")
+    {
+        Mixed m(std::runtime_error("hello"));
+        REQUIRE(m.is<std::exception>());
+    }
+}
+
+TEST_CASE("Unwrap test", "[mixed]")
+{
+    using Mixed = exl::mixed<std::runtime_error, int, char, std::logic_error>;
+
+    SECTION("When type is exact equal")
+    {
+        Mixed m(399);
+        REQUIRE(m.unwrap<int>() == 399);
+    }
+
+    SECTION("When type is exact equal")
+    {
+        Mixed m(std::logic_error("Hello"));
+        REQUIRE(std::string(m.unwrap<std::exception>().what()) == std::string("Hello"));
     }
 }
 

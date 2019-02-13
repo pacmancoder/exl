@@ -213,7 +213,16 @@ namespace exl
         template <typename U>
         bool is()
         {
-            return tag_of<U>() == tag_;
+            return
+                    impl::type_list_id_set_contains<
+                            typename impl::type_list_get_ids_of_derived_types<type_list_t, U>::type
+                    >::check(tag_)
+                            || impl::type_list_id_set_contains<
+                                    typename impl::type_list_get_ids_of_same_types<
+                                            type_list_t,
+                                            U
+                                    >::type
+                            >::check(tag_);
         }
 
         /// @brief Returns reference to the value with specified type.
@@ -245,7 +254,7 @@ namespace exl
         template <typename U>
         void assert_type()
         {
-            if (tag() != tag_of<U>())
+            if (!is<U>())
             {
                 std::terminate();
             }

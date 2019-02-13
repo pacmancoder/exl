@@ -114,6 +114,34 @@ namespace exl { namespace impl
         using tail = type_list_id_set<Values...>;
     };
 
+    template <typename Set>
+    struct type_list_id_set_contains;
+
+    template <type_list_tag_t Head, type_list_tag_t ... Types>
+    struct type_list_id_set_contains<type_list_id_set<Head, Types...>>
+    {
+        static bool check(type_list_tag_t id)
+        {
+            if (id == type_list_id_set<Head, Types...>::value())
+            {
+                return true;
+            }
+            else
+            {
+                return type_list_id_set_contains<type_list_id_set<Types...>>::check(id);
+            }
+        }
+    };
+
+    template <>
+    struct type_list_id_set_contains<type_list_id_set<>>
+    {
+        static bool check(type_list_tag_t)
+        {
+            return false;
+        }
+    };
+
     /// @brief Adds new type before type list's head
     template <typename Set, type_list_tag_t Value>
     struct type_list_id_set_push_front;
@@ -154,7 +182,7 @@ namespace exl { namespace impl
         using type = Lhs;
     };
 
-    /// @brief Returns set of type ID's for derived
+    /// @brief Returns set of type ID's for derived types
     template <typename TL, typename T>
     struct type_list_get_ids_of_derived_types;
 
@@ -180,6 +208,39 @@ namespace exl { namespace impl
     {
         using type = typename std::conditional<
                 std::is_base_of<T, Head>::value,
+                // add last type if same of derived
+                type_list_id_set<type_list_get_type_id<type_list<Head>, Head>::value()>,
+                // return empty list otherwise
+                type_list_id_set<>
+        >::type;
+    };
+
+    /// @brief Returns set of type ID's for same types
+    template <typename TL, typename T>
+    struct type_list_get_ids_of_same_types;
+
+    template <typename T, typename Head, typename ... Tail>
+    struct type_list_get_ids_of_same_types<type_list<Head, Tail...>, T>
+    {
+        using type = typename std::conditional<
+                std::is_same<T, Head>::value,
+                // push new type to the list if type is same of derived
+                typename type_list_id_set_push_front<
+                        typename type_list_get_ids_of_same_types<
+                                type_list<Tail...>, T
+                        >::type,
+                        type_list_get_type_id<type_list<Head, Tail...>, Head>::value()
+                >::type,
+                // skip current type otherwise
+                typename type_list_get_ids_of_same_types<type_list<Tail...>, T>::type
+        >::type;
+    };
+
+    template <typename T, typename Head>
+    struct type_list_get_ids_of_same_types<type_list<Head>, T>
+    {
+        using type = typename std::conditional<
+                std::is_same<T, Head>::value,
                 // add last type if same of derived
                 type_list_id_set<type_list_get_type_id<type_list<Head>, Head>::value()>,
                 // return empty list otherwise

@@ -276,21 +276,21 @@ TEST_CASE("get_ids_of_same_or_derived_types returns single element for same type
     SECTION("Type at the beginning")
     {
         using TL = type_list<std::string, char, int>;
-        using TypeIdList = type_list_get_ids_of_derived_types<TL, std::string>::type;
-        REQUIRE(TypeIdList::value() == 2);
+        using TypeIdList = type_list_get_ids_of_same_types<TL, char>::type;
+        REQUIRE(TypeIdList::value() == 1);
     }
 
     SECTION("Type at the middle")
     {
         using TL = type_list<char, std::string, int>;
-        using TypeIdList = type_list_get_ids_of_derived_types<TL, std::string>::type;
-        REQUIRE(TypeIdList::value() == 1);
+        using TypeIdList = type_list_get_ids_of_same_types<TL, char>::type;
+        REQUIRE(TypeIdList::value() == 2);
     }
 
     SECTION("Type at the end")
     {
-        using TL = type_list<char, int, std::string>;
-        using TypeIdList = type_list_get_ids_of_derived_types<TL, std::string>::type;
+        using TL = type_list<std::string, int, char>;
+        using TypeIdList = type_list_get_ids_of_same_types<TL, char>::type;
         REQUIRE(TypeIdList::value() == 0);
     }
 }
@@ -364,4 +364,26 @@ TEST_CASE("Type list id set concat works")
             typename type_list_id_set_concat<Set1, Set2>::type,
             type_list_id_set<1, 2, 3, 4, 5>
     >::value);
+}
+
+TEST_CASE("Type list id set contains test")
+{
+    using Contains = type_list_id_set_contains<type_list_id_set<42, 11, 55, 6, 23>>;
+
+    SECTION("Returns true if type is contained in the type id list")
+    {
+        REQUIRE(Contains::check(42));
+        REQUIRE(Contains::check(11));
+        REQUIRE(Contains::check(55));
+        REQUIRE(Contains::check(6));
+        REQUIRE(Contains::check(23));
+    }
+
+    SECTION("Returns false if type is missing from type id list")
+    {
+        REQUIRE(!Contains::check(0));
+        REQUIRE(!Contains::check(1));
+        REQUIRE(!Contains::check(2));
+        REQUIRE(!Contains::check(45));
+    }
 }
