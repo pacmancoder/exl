@@ -141,32 +141,6 @@ TEST_CASE("Type list subset id mapping test")
     }
 }
 
-TEST_CASE("Type list push back adds type to the type list")
-{
-    using TL = type_list<int, char>;
-
-    REQUIRE(std::is_same<
-            typename type_list_push_back<TL, std::string>::type,
-            type_list<int, char, std::string>
-    >::value);
-}
-
-TEST_CASE("Type list push back adds type to the empty type list")
-{
-    using TL = type_list<>;
-
-    REQUIRE(std::is_same<
-            typename type_list_push_back<TL, int>::type,
-            type_list<int>
-    >::value);
-}
-
-TEST_CASE("Type list push back of null type adds nothing")
-{
-    using TL = type_list<int, char>;
-    REQUIRE(std::is_same<typename type_list_push_back<TL, type_list_null>::type, TL>::value);
-}
-
 TEST_CASE("Type list push front adds type to the type list")
 {
     using TL = type_list<int, char>;
@@ -194,13 +168,13 @@ TEST_CASE("Type list push front of null type adds nothing")
 }
 
 
-TEST_CASE("Type list type_list_remove_same_or_derived removes value of the same type")
+TEST_CASE("Type list remove same type")
 {
     SECTION("Deleted at the beginning")
     {
         using TL = type_list<std::string, int, char>;
         REQUIRE(std::is_same<
-                typename type_list_remove_same_or_derived<TL, std::string>::type,
+                typename type_list_remove_same<TL, std::string>::type,
                 type_list<int, char>
         >::value);
     }
@@ -209,7 +183,7 @@ TEST_CASE("Type list type_list_remove_same_or_derived removes value of the same 
     {
         using TL = type_list<int, std::string, char>;
         REQUIRE(std::is_same<
-                typename type_list_remove_same_or_derived<TL, std::string>::type,
+                typename type_list_remove_same<TL, std::string>::type,
                 type_list<int, char>
         >::value);
     }
@@ -218,19 +192,19 @@ TEST_CASE("Type list type_list_remove_same_or_derived removes value of the same 
     {
         using TL = type_list<int, char, std::string>;
         REQUIRE(std::is_same<
-                typename type_list_remove_same_or_derived<TL, std::string>::type,
+                typename type_list_remove_same<TL, std::string>::type,
                 type_list<int, char>
         >::value);
     }
 }
 
-TEST_CASE("Type list type_list_remove_same_or_derived removes value of the derived type")
+TEST_CASE("Type list remove derived type")
 {
     SECTION("Deleted at the beginning")
     {
         using TL = type_list<std::runtime_error, int, char>;
         REQUIRE(std::is_same<
-                typename type_list_remove_same_or_derived<TL, std::exception>::type,
+                typename type_list_remove_derived<TL, std::exception>::type,
                 type_list<int, char>
         >::value);
     }
@@ -239,7 +213,7 @@ TEST_CASE("Type list type_list_remove_same_or_derived removes value of the deriv
     {
         using TL = type_list<int, std::logic_error, char>;
         REQUIRE(std::is_same<
-                typename type_list_remove_same_or_derived<TL, std::exception>::type,
+                typename type_list_remove_derived<TL, std::exception>::type,
                 type_list<int, char>
         >::value);
     }
@@ -248,7 +222,7 @@ TEST_CASE("Type list type_list_remove_same_or_derived removes value of the deriv
     {
         using TL = type_list<int, char, std::invalid_argument>;
         REQUIRE(std::is_same<
-                typename type_list_remove_same_or_derived<TL, std::exception>::type,
+                typename type_list_remove_derived<TL, std::exception>::type,
                 type_list<int, char>
         >::value);
     }
@@ -266,7 +240,7 @@ TEST_CASE("Type list type_list_remove_same_or_derived removes value of the same 
     >;
 
     REQUIRE(std::is_same<
-            typename type_list_remove_same_or_derived<TL, std::exception>::type,
+            typename type_list_remove_derived<TL, std::exception>::type,
             type_list<std::string, int, char>
     >::value);
 }
@@ -302,21 +276,21 @@ TEST_CASE("get_ids_of_same_or_derived_types returns single element for same type
     SECTION("Type at the beginning")
     {
         using TL = type_list<std::string, char, int>;
-        using TypeIdList = type_list_get_ids_of_same_or_derived_types<TL, std::string>::type;
+        using TypeIdList = type_list_get_ids_of_derived_types<TL, std::string>::type;
         REQUIRE(TypeIdList::value() == 2);
     }
 
     SECTION("Type at the middle")
     {
         using TL = type_list<char, std::string, int>;
-        using TypeIdList = type_list_get_ids_of_same_or_derived_types<TL, std::string>::type;
+        using TypeIdList = type_list_get_ids_of_derived_types<TL, std::string>::type;
         REQUIRE(TypeIdList::value() == 1);
     }
 
     SECTION("Type at the end")
     {
         using TL = type_list<char, int, std::string>;
-        using TypeIdList = type_list_get_ids_of_same_or_derived_types<TL, std::string>::type;
+        using TypeIdList = type_list_get_ids_of_derived_types<TL, std::string>::type;
         REQUIRE(TypeIdList::value() == 0);
     }
 }
@@ -326,26 +300,26 @@ TEST_CASE("get_ids_of_same_or_derived_types returns single element for derived t
     SECTION("Type at the beginning")
     {
         using TL = type_list<std::runtime_error, char, int>;
-        using TypeIdList = type_list_get_ids_of_same_or_derived_types<TL, std::exception>::type;
+        using TypeIdList = type_list_get_ids_of_derived_types<TL, std::exception>::type;
         REQUIRE(TypeIdList::value() == 2);
     }
 
     SECTION("Type at the middle")
     {
         using TL = type_list<char, std::runtime_error, int>;
-        using TypeIdList = type_list_get_ids_of_same_or_derived_types<TL, std::exception>::type;
+        using TypeIdList = type_list_get_ids_of_derived_types<TL, std::exception>::type;
         REQUIRE(TypeIdList::value() == 1);
     }
 
     SECTION("Type at the end")
     {
         using TL = type_list<char, int, std::runtime_error>;
-        using TypeIdList = type_list_get_ids_of_same_or_derived_types<TL, std::exception>::type;
+        using TypeIdList = type_list_get_ids_of_derived_types<TL, std::exception>::type;
         REQUIRE(TypeIdList::value() == 0);
     }
 }
 
-TEST_CASE("get_ids_of_same_or_derived_types returns many element for derived and same types")
+TEST_CASE("Type list get ids for derived or same returns correct elements")
 {
     using TL = type_list<
             std::runtime_error,
@@ -355,7 +329,7 @@ TEST_CASE("get_ids_of_same_or_derived_types returns many element for derived and
             std::logic_error,
             std::invalid_argument
     >;
-    using TypeIdList = type_list_get_ids_of_same_or_derived_types<TL, std::exception>::type;
+    using TypeIdList = type_list_get_ids_of_derived_types<TL, std::exception>::type;
 
     REQUIRE(TypeIdList::value() == 5);
     REQUIRE(TypeIdList::tail::value() == 3);
@@ -363,4 +337,31 @@ TEST_CASE("get_ids_of_same_or_derived_types returns many element for derived and
     REQUIRE(TypeIdList::tail::tail::tail::value() == 0);
 }
 
-// TODO: Type list id set <contains> id
+TEST_CASE("Type list id set push back adds id to the type list id set")
+{
+    using Set1 = type_list_id_set<42, 11>;
+    using Set2 = typename type_list_id_set_push_back<Set1, 2>::type;
+
+    REQUIRE(Set2::value() == 42);
+    REQUIRE(Set2::tail::value() == 11);
+    REQUIRE(Set2::tail::tail::value() == 2);
+}
+
+TEST_CASE("Type list id set push back adds id to the empty type id list")
+{
+    using Set1 = type_list_id_set<>;
+    using Set2 = typename type_list_id_set_push_back<Set1, 55>::type;
+
+    REQUIRE(Set2::value() == 55);
+}
+
+TEST_CASE("Type list id set concat works")
+{
+    using Set1 = type_list_id_set<1, 2, 3>;
+    using Set2 = type_list_id_set<4, 5>;
+
+    REQUIRE(std::is_same<
+            typename type_list_id_set_concat<Set1, Set2>::type,
+            type_list_id_set<1, 2, 3, 4, 5>
+    >::value);
+}

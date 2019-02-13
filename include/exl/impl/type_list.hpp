@@ -100,9 +100,6 @@ namespace exl { namespace impl
     template <type_list_tag_t ... Values>
     struct type_list_id_set;
 
-    template <>
-    struct type_list_id_set<> {};
-
     template <type_list_tag_t Value>
     struct type_list_id_set<Value>
     {
@@ -127,66 +124,67 @@ namespace exl { namespace impl
         using type = type_list_id_set<NewValue, Values...>;
     };
 
-    template <type_list_tag_t Value>
-    struct type_list_id_set_push_front<type_list_id_set<>, Value>
+    /// @brief Adds new type before type list's tail
+    template <typename Set, type_list_tag_t Value>
+    struct type_list_id_set_push_back;
+
+    template <type_list_tag_t NewValue, type_list_tag_t ... Values>
+    struct type_list_id_set_push_back<type_list_id_set<Values...>, NewValue>
     {
-        using type = type_list_id_set<Value>;
+        using type = type_list_id_set<Values..., NewValue>;
     };
 
-    /// @brief Returns set of type ID's for derived or same types
-    template <typename TL, typename T, typename EnableSpecialization = void>
-    struct type_list_get_ids_of_same_or_derived_types;
 
-    template <typename T, typename Head, typename ... Tail>
-    struct type_list_get_ids_of_same_or_derived_types<
-            type_list<Head, Tail...>,
-            T,
-            typename std::enable_if<
-                    !(std::is_same<Head, T>::value || std::is_base_of<T, Head>::value)
-            >::type
-    >
+    /// @brief Concatenates two type id lists
+    template <typename Lhs, typename Rhs>
+    struct type_list_id_set_concat;
+
+    template <typename Lhs, type_list_tag_t Head, type_list_tag_t ... Tail>
+    struct type_list_id_set_concat<Lhs, type_list_id_set<Head, Tail...>>
     {
-        using type =
-        typename type_list_get_ids_of_same_or_derived_types<type_list<Tail...>, T>::type;
+        using type = typename type_list_id_set_concat<
+                typename type_list_id_set_push_back<Lhs, Head>::type,
+                type_list_id_set<Tail...>
+        >::type;
     };
 
-    template <typename T, typename Head, typename ... Tail>
-    struct type_list_get_ids_of_same_or_derived_types<
-            type_list<Head, Tail...>,
-            T,
-            typename std::enable_if<
-                    std::is_same<Head, T>::value || std::is_base_of<T, Head>::value
-            >::type
-    >
+    template <typename Lhs>
+    struct type_list_id_set_concat<Lhs, type_list_id_set<>>
     {
-        using type = typename type_list_id_set_push_front<
-                typename type_list_get_ids_of_same_or_derived_types<type_list<Tail...>, T>::type,
-                type_list_get_type_id<type_list<Head, Tail...>, Head>::value()
+        using type = Lhs;
+    };
+
+    /// @brief Returns set of type ID's for derived
+    template <typename TL, typename T>
+    struct type_list_get_ids_of_derived_types;
+
+    template <typename T, typename Head, typename ... Tail>
+    struct type_list_get_ids_of_derived_types<type_list<Head, Tail...>, T>
+    {
+        using type = typename std::conditional<
+                std::is_base_of<T, Head>::value,
+                // push new type to the list if type is same of derived
+                typename type_list_id_set_push_front<
+                        typename type_list_get_ids_of_derived_types<
+                                type_list<Tail...>, T
+                        >::type,
+                        type_list_get_type_id<type_list<Head, Tail...>, Head>::value()
+                >::type,
+                // skip current type otherwise
+                typename type_list_get_ids_of_derived_types<type_list<Tail...>, T>::type
         >::type;
     };
 
     template <typename T, typename Head>
-    struct type_list_get_ids_of_same_or_derived_types<
-            type_list<Head>,
-            T,
-            typename std::enable_if<
-                    !(std::is_same<Head, T>::value || std::is_base_of<T, Head>::value)
-            >::type
-    >
+    struct type_list_get_ids_of_derived_types<type_list<Head>, T>
     {
-        using type = type_list_id_set<>;
-    };
-
-    template <typename T, typename Head>
-    struct type_list_get_ids_of_same_or_derived_types<
-            type_list<Head>,
-            T,
-            typename std::enable_if<
-                    std::is_same<Head, T>::value || std::is_base_of<T, Head>::value
-            >::type
-    >
-    {
-        using type = type_list_id_set<type_list_get_type_id<type_list<Head>, Head>::value()>;
+        using type = typename std::conditional<
+                std::is_base_of<T, Head>::value,
+                // add last type if same of derived
+                type_list_id_set<type_list_get_type_id<type_list<Head>, Head>::value()>,
+                // return empty list otherwise
+                type_list_id_set<>
+        >::type;
     };
 
     /// @brief Helper type to calculate storage type size which suitable for any type in type list
@@ -374,22 +372,6 @@ namespace exl { namespace impl
         }
     };
 
-    /// @brief Adds new type to the type list's tail
-    template <typename TL, typename T>
-    struct type_list_push_back;
-
-    template <typename T, typename ... Types>
-    struct type_list_push_back<type_list<Types...>, T>
-    {
-        using type = type_list<Types..., T>;
-    };
-
-    template <typename ... Types>
-    struct type_list_push_back<type_list<Types...>, type_list_null>
-    {
-        using type = type_list<Types...>;
-    };
-
     /// @brief Adds new type before type list's head
     template <typename TL, typename T>
     struct type_list_push_front;
@@ -406,58 +388,57 @@ namespace exl { namespace impl
         using type = type_list<Types...>;
     };
 
-    // @brief removes all types from the type list which are the same or derived from it
-    template <typename TL, typename T, typename EnableSpecialization = void>
-    struct type_list_remove_same_or_derived;
+    // @brief removes all types from the type list which are the same type as specified
+    template <typename TL, typename T>
+    struct type_list_remove_same;
 
     template <typename T, typename Head, typename ... Types>
-    struct type_list_remove_same_or_derived<
-            type_list<Head, Types...>,
-            T,
-            typename std::enable_if<
-                    std::is_same<Head, T>::value || std::is_base_of<T, Head>::value
-            >::type
-    >
+    struct type_list_remove_same<type_list<Head, Types...>, T>
     {
-        using type = typename type_list_remove_same_or_derived<type_list<Types...>, T>::type;
-    };
-
-    template <typename T, typename Head, typename ... Types>
-    struct type_list_remove_same_or_derived<
-            type_list<Head, Types...>,
-            T,
-            typename std::enable_if<
-                    !(std::is_same<Head, T>::value || std::is_base_of<T, Head>::value)
-            >::type
-    >
-    {
-        using type = typename type_list_push_front<
-                typename type_list_remove_same_or_derived<type_list<Types...>, T>::type,
-                Head
+        using type = typename std::conditional<
+                std::is_same<Head, T>::value,
+                typename type_list_remove_same<type_list<Types...>, T>::type,
+                typename type_list_push_front<
+                        typename type_list_remove_same<type_list<Types...>, T>::type,
+                        Head
+                >::type
         >::type;
     };
 
     template <typename T, typename Head>
-    struct type_list_remove_same_or_derived<
-            type_list<Head>,
-            T,
-            typename std::enable_if<
-                    std::is_same<Head, T>::value || std::is_base_of<T, Head>::value
-            >::type
-    >
+    struct type_list_remove_same<type_list<Head>, T>
     {
-        using type = type_list<>;
+        using type = typename std::conditional<
+                std::is_same<Head, T>::value,
+                type_list<>,
+                type_list<Head>
+        >::type;
+    };
+
+    // @brief removes all types from the type list which are the same type as specified
+    template <typename TL, typename T>
+    struct type_list_remove_derived;
+
+    template <typename T, typename Head, typename ... Types>
+    struct type_list_remove_derived<type_list<Head, Types...>, T>
+    {
+        using type = typename std::conditional<
+                std::is_base_of<T, Head>::value,
+                typename type_list_remove_derived<type_list<Types...>, T>::type,
+                typename type_list_push_front<
+                        typename type_list_remove_derived<type_list<Types...>, T>::type,
+                        Head
+                >::type
+        >::type;
     };
 
     template <typename T, typename Head>
-    struct type_list_remove_same_or_derived<
-            type_list<Head>,
-            T,
-            typename std::enable_if<
-                    !(std::is_same<Head, T>::value || std::is_base_of<T, Head>::value)
-            >::type
-    >
+    struct type_list_remove_derived<type_list<Head>, T>
     {
-        using type = type_list<Head>;
+        using type = typename std::conditional<
+                std::is_base_of<T, Head>::value,
+                type_list<>,
+                type_list<Head>
+        >::type;
     };
 }}
