@@ -1,0 +1,17 @@
+language: cpp
+
+os:
+  - linux
+  - osx
+
+before_script:
+  - cmake -H. Build-Debug -DCMAKE_BUILD_TYPE=Debug -DEXL_ENABLE_TESTING=ON
+  - cmake -H. Build-Release -DCMAKE_BUILD_TYPE=Debug -DEXL_ENABLE_TESTING=ON
+
+script:
+  - cd Build-Debug
+  - make -j2
+  - CTEST_OUTPUT_ON_FAILURE=1 ctest -j 2
+  - cd ../Build-Release
+  - make -j2
+  - CTEST_OUTPUT_ON_FAILURE=1 ctest -j 2
