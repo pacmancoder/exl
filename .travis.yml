@@ -5,8 +5,8 @@ os:
   - osx
 
 before_script:
-  - cmake -H. Build-Debug -DCMAKE_BUILD_TYPE=Debug -DEXL_ENABLE_TESTING=ON
-  - cmake -H. Build-Release -DCMAKE_BUILD_TYPE=Debug -DEXL_ENABLE_TESTING=ON
+  - cmake -H. -BBuild-Debug -DCMAKE_BUILD_TYPE=Debug -DEXL_ENABLE_TESTING=ON
+  - cmake -H. -BBuild-Release -DCMAKE_BUILD_TYPE=Debug -DEXL_ENABLE_TESTING=ON
 
 script:
   - cd Build-Debug
