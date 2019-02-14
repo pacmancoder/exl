@@ -12,7 +12,7 @@
 
 #include <exl/mixed.hpp>
 
-#include "class_mock.h"
+#include "mock/ClassMock.hpp"
 
 using namespace exl::impl;
 using namespace exl::mock;

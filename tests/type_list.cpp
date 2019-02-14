@@ -115,7 +115,7 @@ TEST_CASE("Type list is subset test", "[type_list]")
     }
 }
 
-TEST_CASE("Type list subset id mapping test")
+TEST_CASE("Type list subset id mapping test", "[type_list]")
 {
     using TL = type_list<std::string, std::wstring, size_t, char, int>;
     using SubsetTL = type_list<int, char, std::string>;
@@ -141,7 +141,7 @@ TEST_CASE("Type list subset id mapping test")
     }
 }
 
-TEST_CASE("Type list push front adds type to the type list")
+TEST_CASE("Type list push front adds type to the type list", "[type_list]")
 {
     using TL = type_list<int, char>;
 
@@ -151,7 +151,7 @@ TEST_CASE("Type list push front adds type to the type list")
     >::value);
 }
 
-TEST_CASE("Type list push front adds type to the empty type list")
+TEST_CASE("Type list push front adds type to the empty type list", "[type_list]")
 {
     using TL = type_list<>;
 
@@ -161,14 +161,14 @@ TEST_CASE("Type list push front adds type to the empty type list")
     >::value);
 }
 
-TEST_CASE("Type list push front of null type adds nothing")
+TEST_CASE("Type list push front of null type adds nothing", "[type_list]")
 {
     using TL = type_list<int, char>;
     REQUIRE(std::is_same<typename type_list_push_front<TL, type_list_null>::type, TL>::value);
 }
 
 
-TEST_CASE("Type list remove same type")
+TEST_CASE("Type list remove same type", "[type_list]")
 {
     SECTION("Deleted at the beginning")
     {
@@ -198,7 +198,7 @@ TEST_CASE("Type list remove same type")
     }
 }
 
-TEST_CASE("Type list remove derived type")
+TEST_CASE("Type list remove derived type", "[type_list]")
 {
     SECTION("Deleted at the beginning")
     {
@@ -228,7 +228,7 @@ TEST_CASE("Type list remove derived type")
     }
 }
 
-TEST_CASE("Type list type_list_remove_same_or_derived removes value of the same or derived type")
+TEST_CASE("Type list remove same or derived works as expected", "[type_list]")
 {
     using TL = type_list<
             std::string,
@@ -245,7 +245,7 @@ TEST_CASE("Type list type_list_remove_same_or_derived removes value of the same 
     >::value);
 }
 
-TEST_CASE("Type list id set type params test")
+TEST_CASE("Type list id set type params test", "[type_list]")
 {
     using TypeListIdSet = type_list_id_set<42, 5, 22>;
     REQUIRE(TypeListIdSet::value() == 42);
@@ -253,7 +253,7 @@ TEST_CASE("Type list id set type params test")
     REQUIRE(TypeListIdSet::tail::tail::value() == 22);
 }
 
-TEST_CASE("Type list id set push front adds id to the type list id set")
+TEST_CASE("Type list id set push front adds id to the type list id set", "[type_list]")
 {
     using Set1 = type_list_id_set<42, 11>;
     using Set2 = typename type_list_id_set_push_front<Set1, 2>::type;
@@ -263,7 +263,7 @@ TEST_CASE("Type list id set push front adds id to the type list id set")
     REQUIRE(Set2::tail::tail::value() == 11);
 }
 
-TEST_CASE("Type list id set push front adds id to the empty type id list")
+TEST_CASE("Type list id set push front adds id to the empty type id list", "[type_list]")
 {
     using Set1 = type_list_id_set<>;
     using Set2 = typename type_list_id_set_push_front<Set1, 55>::type;
@@ -271,7 +271,7 @@ TEST_CASE("Type list id set push front adds id to the empty type id list")
     REQUIRE(Set2::value() == 55);
 }
 
-TEST_CASE("get_ids_of_same_or_derived_types returns single element for same type")
+TEST_CASE("Get ids of same or derived works as expected for same", "[type_list]")
 {
     SECTION("Type at the beginning")
     {
@@ -295,7 +295,7 @@ TEST_CASE("get_ids_of_same_or_derived_types returns single element for same type
     }
 }
 
-TEST_CASE("get_ids_of_same_or_derived_types returns single element for derived type")
+TEST_CASE("Get ids of same or derived works as expected for derived", "[type_list]")
 {
     SECTION("Type at the beginning")
     {
@@ -319,7 +319,7 @@ TEST_CASE("get_ids_of_same_or_derived_types returns single element for derived t
     }
 }
 
-TEST_CASE("Type list get ids for derived or same returns correct elements")
+TEST_CASE("Type list get ids for derived or same returns correct elements", "[type_list]")
 {
     using TL = type_list<
             std::runtime_error,
@@ -337,7 +337,7 @@ TEST_CASE("Type list get ids for derived or same returns correct elements")
     REQUIRE(TypeIdList::tail::tail::tail::value() == 0);
 }
 
-TEST_CASE("Type list id set push back adds id to the type list id set")
+TEST_CASE("Type list id set push back adds id to the type list id set", "[type_list]")
 {
     using Set1 = type_list_id_set<42, 11>;
     using Set2 = typename type_list_id_set_push_back<Set1, 2>::type;
@@ -347,7 +347,7 @@ TEST_CASE("Type list id set push back adds id to the type list id set")
     REQUIRE(Set2::tail::tail::value() == 2);
 }
 
-TEST_CASE("Type list id set push back adds id to the empty type id list")
+TEST_CASE("Type list id set push back adds id to the empty type id list", "[type_list]")
 {
     using Set1 = type_list_id_set<>;
     using Set2 = typename type_list_id_set_push_back<Set1, 55>::type;
@@ -355,7 +355,7 @@ TEST_CASE("Type list id set push back adds id to the empty type id list")
     REQUIRE(Set2::value() == 55);
 }
 
-TEST_CASE("Type list id set concat works")
+TEST_CASE("Type list id set concat works", "[type_list]")
 {
     using Set1 = type_list_id_set<1, 2, 3>;
     using Set2 = type_list_id_set<4, 5>;
@@ -366,7 +366,7 @@ TEST_CASE("Type list id set concat works")
     >::value);
 }
 
-TEST_CASE("Type list id set contains test")
+TEST_CASE("Type list id set contains test", "[type_list]")
 {
     using Contains = type_list_id_set_contains<type_list_id_set<42, 11, 55, 6, 23>>;
 

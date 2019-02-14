@@ -27,7 +27,7 @@ namespace
                 : is_copied(true)
                 , is_moved(rhs.is_moved) {}
 
-        CallableMock(CallableMock&& rhs)
+        CallableMock(CallableMock&& rhs) noexcept
                 : is_copied(rhs.is_copied)
                 , is_moved(true) {}
 
@@ -41,7 +41,7 @@ namespace
     };
 }
 
-TEST_CASE("Matcher exl::when can be called with any callable")
+TEST_CASE("Matcher exl::when can be called with any callable", "[matchers]")
 {
     SECTION("With lambda")
     {
@@ -85,13 +85,13 @@ TEST_CASE("Matcher exl::when can be called with any callable")
     }
 }
 
-TEST_CASE("Matcher exl::when result matcher has correct matching type")
+TEST_CASE("Matcher exl::when result matcher has correct matching type", "[matchers]")
 {
     auto matcher = exl::when(&square);
     REQUIRE(std::is_same<decltype(matcher)::type, exl::impl::marker::matcher_when>::value);
 }
 
-TEST_CASE("Matcher exl::when_exact can be called with any callable")
+TEST_CASE("Matcher exl::when_exact can be called with any callable", "[matchers]")
 {
     SECTION("With lambda")
     {
@@ -135,13 +135,13 @@ TEST_CASE("Matcher exl::when_exact can be called with any callable")
     }
 }
 
-TEST_CASE("Matcher exl::when_exact result matcher has correct matching type")
+TEST_CASE("Matcher exl::when_exact result matcher has correct matching type", "[matchers]")
 {
     auto matcher = exl::when_exact(&square);
     REQUIRE(std::is_same<decltype(matcher)::type, exl::impl::marker::matcher_when_exact>::value);
 }
 
-TEST_CASE("Matcher exl::otherwise can be called with any callable")
+TEST_CASE("Matcher exl::otherwise can be called with any callable", "[matchers]")
 {
     SECTION("With lambda")
     {
@@ -185,7 +185,7 @@ TEST_CASE("Matcher exl::otherwise can be called with any callable")
     }
 }
 
-TEST_CASE("Matcher exl::otherwise result matcher has correct matching type")
+TEST_CASE("Matcher exl::otherwise result matcher has correct matching type", "[matchers]")
 {
     auto matcher = exl::otherwise(&square);
     REQUIRE(std::is_same<decltype(matcher)::type, exl::impl::marker::matcher_otherwise>::value);

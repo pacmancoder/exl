@@ -7,6 +7,8 @@ cmake_minimum_required(VERSION 3.7)
 
 project(exl)
 
+option(EXL_ENABLE_TESTING "Enable exl library testing" OFF)
+
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -14,15 +16,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_library(${PROJECT_NAME} INTERFACE)
 target_include_directories(${PROJECT_NAME} INTERFACE include)
 
-set(TEST_PROJECT_NAME ${PROJECT_NAME}-test)
-
-add_executable(${TEST_PROJECT_NAME}
-        tests/tests.cpp
-        tests/type_list.cpp
-        tests/matchers.cpp
-        tests/mixed.cpp
-)
-
-include_directories(${TEST_PROJECT_NAME} third-party)
-target_link_libraries(${TEST_PROJECT_NAME} PRIVATE ${PROJECT_NAME})
-target_compile_options(${TEST_PROJECT_NAME} PRIVATE -Werror -Wall -Wextra -Wpedantic)
+if (EXL_ENABLE_TESTING)
+    enable_testing()
+    add_subdirectory(libs)
+    add_subdirectory(tests)
+endif ()
