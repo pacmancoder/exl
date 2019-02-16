@@ -321,6 +321,14 @@ TEST_CASE("Mixed type construct from subset test when tail type", "[mixed]")
     generic_test_construct_from_subset<Mixed, MixedSubset>();
 }
 
+TEST_CASE("Mixed type construct from subset test when head type", "[mixed]")
+{
+    using Mixed = exl::mixed<int, std::string, ClassMock, char>;
+    using MixedSubset = exl::mixed<ClassMock, char, std::string>;
+
+    generic_test_construct_from_subset<Mixed, MixedSubset>();
+}
+
 template <typename Mixed, typename MixedSubset>
 static void generic_test_assign_from_subset()
 {
@@ -471,6 +479,14 @@ TEST_CASE("Mixed type assign from subset test when tail type", "[mixed]")
 {
     using Mixed = exl::mixed<std::string, char, SecondClassMock, ClassMock, std::exception>;
     using MixedSubset = exl::mixed<ClassMock, char, SecondClassMock>;
+
+    generic_test_assign_from_subset<Mixed, MixedSubset>();
+}
+
+TEST_CASE("Mixed type assign from subset test when head type", "[mixed]")
+{
+    using Mixed = exl::mixed<std::string, char, SecondClassMock, ClassMock, std::exception>;
+    using MixedSubset = exl::mixed<SecondClassMock, ClassMock, char>;
 
     generic_test_assign_from_subset<Mixed, MixedSubset>();
 }
