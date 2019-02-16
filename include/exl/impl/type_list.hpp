@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 namespace exl { namespace impl
 {
     /// @brief Represents id of type in the type list
