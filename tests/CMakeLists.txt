@@ -12,11 +12,13 @@ add_executable(exl-test
         mixed.cpp
 )
 if (EXL_ENABLE_COVERAGE)
-    add_coverage(exl-test)
+
 endif()
 
 target_link_libraries(exl-test PRIVATE exl)
 target_link_libraries(exl-test PRIVATE Catch2)
+
+target_link_libraries(exl-test PUBLIC exl-coverage-config)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|GNU")
     target_compile_options(exl-test PRIVATE
@@ -36,7 +38,4 @@ elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     )
 endif ()
 
-add_test(
-        NAME ${PROJECT_NAME}
-        COMMAND ${PROJECT_NAME}
-)
+add_test(NAME exl-test COMMAND exl-test)

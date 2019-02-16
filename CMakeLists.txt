@@ -14,10 +14,20 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+
+add_library(exl-coverage-config INTERFACE)
 if(EXL_ENABLE_COVERAGE)
-    set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/libs/cmake-codecov/cmake" ${CMAKE_MODULE_PATH})
-    set(ENABLE_COVERAGE ON CACHE BOOL "Enable coverage build." FORCE)
-    find_package(codecov)
+    # Add required flags (GCC & LLVM/Clang)
+    target_compile_options(exl-coverage-config INTERFACE
+            -O0        # no optimization
+            -g         # generate debug info
+            --coverage # sets all required flags
+            )
+    if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.13)
+        target_link_options(exl-coverage-config INTERFACE --coverage)
+    else()
+        target_link_libraries(exl-coverage-config INTERFACE --coverage)
+    endif()
 endif()
 
 add_library(exl INTERFACE)
@@ -28,8 +38,3 @@ if (EXL_ENABLE_TESTING)
     add_subdirectory(libs)
     add_subdirectory(tests)
 endif ()
-
-if(EXL_ENABLE_COVERAGE)
-    list(APPEND LCOV_REMOVE_PATTERNS "'/usr/*'")
-    coverage_evaluate()
-endif()
