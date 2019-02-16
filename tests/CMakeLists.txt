@@ -37,7 +37,7 @@ endif ()
 
 add_executable(exl-mixed-invalid-unwrap-test mixed_invalid_unwrap_test.cpp)
 target_link_libraries(exl-mixed-invalid-unwrap-test PRIVATE exl)
-target_link_libraries(exl-test PRIVATE exl-coverage-config)
+target_link_libraries(exl-mixed-invalid-unwrap-test PRIVATE exl-coverage-config)
 
 add_test(NAME exl-test COMMAND exl-test)
 add_test(NAME exl-mixed-invalid-unwrap-test COMMAND exl-mixed-invalid-unwrap-test)
