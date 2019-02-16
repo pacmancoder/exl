@@ -11,8 +11,6 @@ addons:
       - lcov
 
 before_script:
-  - # Set bash strict mode
-  - set -euo pipefail
   - # prepare cmake binary directories
   - cmake -H. -BBuild-Debug -DCMAKE_BUILD_TYPE=Debug -DEXL_ENABLE_TESTING=ON -DEXL_ENABLE_COVERAGE=ON
   - cmake -H. -BBuild-Release -DCMAKE_BUILD_TYPE=Release -DEXL_ENABLE_TESTING=ON
