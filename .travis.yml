@@ -4,14 +4,34 @@ os:
   - linux
   - osx
 
+
+addons:
+  apt:
+    packages:
+      - lcov
+
 before_script:
-  - cmake -H. -BBuild-Debug -DCMAKE_BUILD_TYPE=Debug -DEXL_ENABLE_TESTING=ON
-  - cmake -H. -BBuild-Release -DCMAKE_BUILD_TYPE=Debug -DEXL_ENABLE_TESTING=ON
+  - # Set bash strict mode
+  - set -euo pipefail
+  - # prepare cmake binary directories
+  - cmake -H. -BBuild-Debug -DCMAKE_BUILD_TYPE=Debug -DEXL_ENABLE_TESTING=ON -DEXL_ENABLE_COVERAGE=ON
+  - cmake -H. -BBuild-Release -DCMAKE_BUILD_TYPE=Release -DEXL_ENABLE_TESTING=ON
 
 script:
-  - cd Build-Debug
-  - make -j2
-  - CTEST_OUTPUT_ON_FAILURE=1 ctest -j 2
-  - cd ../Build-Release
-  - make -j2
-  - CTEST_OUTPUT_ON_FAILURE=1 ctest -j 2
+  - # Build and test in debug mode
+  - cmake --build Build-Debug --config Debug -- -j $(nproc)
+  - CTEST_OUTPUT_ON_FAILURE=1 cmake --build Build-Debug --config Debug --target test -- -j $(nproc)
+  - # Build and test in release mode
+  - cmake --build Build-Release --config Release -- -j $(nproc)
+  - CTEST_OUTPUT_ON_FAILURE=1 cmake --build Build-Release --config Release --target test -- -j $(nproc)
+
+after_success:
+  - # Collect coverage report
+  - |
+    if [[ "${TRAVIS_OS_NAME}" == "linux" ]] then
+        cd Build-Debug
+        make gcov
+        make lcov
+        bash <(curl -s https://codecov.io/bash) -X gcov \
+            || echo "Codecov did not collect coverage reports"
+    fi
