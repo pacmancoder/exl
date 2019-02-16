@@ -118,7 +118,7 @@ TEST_CASE("Mixed type correct destructor call test", "[mixed]")
 
 TEST_CASE("Mixed type assignment operators test", "[mixed]")
 {
-    using Mixed = exl::mixed<int, ClassMock, SecondClassMock>;
+    using Mixed = exl::mixed<int, SecondClassMock, ClassMock>;
     CallCounter calls;
 
     Mixed m1(ClassMock(1, &calls));
@@ -310,7 +310,7 @@ TEST_CASE("Mixed type construct from another mixed test", "[mixed]")
 TEST_CASE("Mixed type assign from another mixed test", "[mixed]")
 {
     using Mixed = exl::mixed<std::string, char, SecondClassMock, ClassMock>;
-    using MixedSubset = exl::mixed<ClassMock, SecondClassMock>;
+    using MixedSubset = exl::mixed<SecondClassMock, ClassMock>;
 
     CallCounter calls;
 
