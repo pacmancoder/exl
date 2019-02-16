@@ -17,11 +17,11 @@ before_script:
 
 script:
   - # Build and test in debug mode
-  - cmake --build Build-Debug --config Debug -- -j $(nproc)
-  - CTEST_OUTPUT_ON_FAILURE=1 cmake --build Build-Debug --config Debug --target test -- -j $(nproc)
+  - cmake --build Build-Debug --config Debug
+  - CTEST_OUTPUT_ON_FAILURE=1 cmake --build Build-Debug --config Debug --target test
   - # Build and test in release mode
-  - cmake --build Build-Release --config Release -- -j $(nproc)
-  - CTEST_OUTPUT_ON_FAILURE=1 cmake --build Build-Release --config Release --target test -- -j $(nproc)
+  - cmake --build Build-Release --config Release
+  - CTEST_OUTPUT_ON_FAILURE=1 cmake --build Build-Release --config Release --target test
 
 after_success:
   - # Collect coverage report
