@@ -15,8 +15,7 @@ add_executable(exl-test
 
 target_link_libraries(exl-test PRIVATE exl)
 target_link_libraries(exl-test PRIVATE Catch2)
-
-target_link_libraries(exl-test PUBLIC exl-coverage-config)
+target_link_libraries(exl-test PRIVATE exl-coverage-config)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|GNU")
     target_compile_options(exl-test PRIVATE
@@ -37,7 +36,8 @@ elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 endif ()
 
 add_executable(exl-mixed-invalid-unwrap-test mixed_invalid_unwrap_test.cpp)
-target_link_libraries(exl-mixed-invalid-unwrap-test exl)
+target_link_libraries(exl-mixed-invalid-unwrap-test PRIVATE exl)
+target_link_libraries(exl-test PRIVATE exl-coverage-config)
 
 add_test(NAME exl-test COMMAND exl-test)
 add_test(NAME exl-mixed-invalid-unwrap-test COMMAND exl-mixed-invalid-unwrap-test)
