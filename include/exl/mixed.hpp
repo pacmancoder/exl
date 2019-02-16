@@ -8,6 +8,7 @@
 #include <new>
 #include <type_traits>
 #include <exception>
+#include <utility>
 
 #include <exl/matchers.hpp>
 

@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <utility>
+
 namespace exl
 {
     namespace impl
