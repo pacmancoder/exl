@@ -76,10 +76,34 @@ TEST_CASE("Type check test", "[mixed]")
         REQUIRE(m.is<int>());
     }
 
-    SECTION("When type is exact equal")
+    SECTION("When type is derived from")
     {
         Mixed m(std::runtime_error("hello"));
         REQUIRE(m.is<std::exception>());
+    }
+}
+
+TEST_CASE("Type exact check test", "[mixed]")
+{
+    using Mixed = exl::mixed<std::runtime_error, int, char, std::exception>;
+
+    SECTION("When type is exact equal int")
+    {
+        Mixed m(399);
+        REQUIRE(m.is_exact<int>());
+    }
+
+    SECTION("When type is exact equal std::exception")
+    {
+        std::exception ex;
+        Mixed m(std::move(ex));
+        REQUIRE(m.is_exact<std::exception>());
+    }
+
+    SECTION("When type is derived from")
+    {
+        Mixed m(std::runtime_error("hello"));
+        REQUIRE(!m.is_exact<std::exception>());
     }
 }
 
@@ -97,6 +121,23 @@ TEST_CASE("Unwrap test", "[mixed]")
     {
         Mixed m(std::logic_error("Hello"));
         REQUIRE(std::string(m.unwrap<std::exception>().what()) == std::string("Hello"));
+    }
+}
+
+TEST_CASE("Unwrap exact test", "[mixed]")
+{
+    using Mixed = exl::mixed<std::runtime_error, int, char, std::logic_error>;
+
+    SECTION("When type is exact equal")
+    {
+        Mixed m(422);
+        REQUIRE(m.unwrap_exact<int>() == 422);
+    }
+
+    SECTION("When type is exact equal on std::runtime_error")
+    {
+        Mixed m(std::runtime_error("hello"));
+        REQUIRE(std::string(m.unwrap_exact<std::runtime_error>().what()) == std::string("hello"));
     }
 }
 

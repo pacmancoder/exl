@@ -208,9 +208,10 @@ namespace exl
             tag_ = tag_of<U>();
         }
 
-        /// @brief Checks if current stored variant is same as specified type U
+        /// @brief Checks if current stored variant is same as specified type U or derived from it
         /// @tparam U Type to perform check for
-        /// @return True when stored type is same as specified type U, false in other cases.
+        /// @return True when stored type is same as specified type U or derived from it, false in
+        /// other case.
         template <typename U>
         bool is()
         {
@@ -226,9 +227,19 @@ namespace exl
                             >::check(tag_);
         }
 
+        /// @brief Checks if current stored variant is same as specified type U
+        /// @tparam U Type to perform check for
+        /// @return True when stored type is same as specified type U, false in other case.
+        template <typename U>
+        bool is_exact()
+        {
+            return impl::type_list_get_type_id<type_list_t, U>::value() == tag_;
+        }
+
         /// @brief Returns reference to the value with specified type.
         ///
-        /// Calls std::terminate if stored type is not equal to the requested type.
+        /// Calls std::terminate if stored type is neither equal to the requested type nor derived
+        /// from it.
         /// Please use this method only with conjunction with exl::mixed::is() of when type is
         /// clearly known at the moment of call (e.g. right after explicit construction of
         /// ext::mixed) In other cases please use indirect access methods.
@@ -239,6 +250,22 @@ namespace exl
         U& unwrap()
         {
             assert_type<U>();
+            return unsafe_unwrap<U>();
+        }
+
+        /// @brief Returns reference to the value with specified type.
+        ///
+        /// Calls std::terminate if stored type is not equal to the requested type.
+        /// Please use this method only with conjunction with exl::mixed::is_exact() of when type is
+        /// clearly known at the moment of call (e.g. right after explicit construction of
+        /// ext::mixed) In other cases please use indirect access methods.
+        ///
+        /// @tparam U Requested type to unwrap
+        /// @return Reference to unwrapped type
+        template <typename U>
+        U& unwrap_exact()
+        {
+            assert_type_exact<U>();
             return unsafe_unwrap<U>();
         }
 
@@ -256,6 +283,15 @@ namespace exl
         void assert_type()
         {
             if (!is<U>())
+            {
+                std::terminate();
+            }
+        }
+
+        template <typename U>
+        void assert_type_exact()
+        {
+            if (!is_exact<U>())
             {
                 std::terminate();
             }

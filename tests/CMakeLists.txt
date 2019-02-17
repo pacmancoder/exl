@@ -35,10 +35,16 @@ elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     )
 endif ()
 
+add_test(NAME exl-test COMMAND exl-test)
+
 add_executable(exl-mixed-invalid-unwrap-test mixed_invalid_unwrap_test.cpp)
 target_link_libraries(exl-mixed-invalid-unwrap-test PRIVATE exl)
 target_link_libraries(exl-mixed-invalid-unwrap-test PRIVATE exl-coverage-config)
-
-add_test(NAME exl-test COMMAND exl-test)
 add_test(NAME exl-mixed-invalid-unwrap-test COMMAND exl-mixed-invalid-unwrap-test)
 set_tests_properties(exl-mixed-invalid-unwrap-test PROPERTIES WILL_FAIL TRUE)
+
+add_executable(exl-mixed-invalid-unwrap-exact-test mixed_invalid_unwrap_exact_test.cpp)
+target_link_libraries(exl-mixed-invalid-unwrap-exact-test PRIVATE exl)
+target_link_libraries(exl-mixed-invalid-unwrap-exact-test PRIVATE exl-coverage-config)
+add_test(NAME exl-mixed-invalid-unwrap-exact-test COMMAND exl-mixed-invalid-unwrap-exact-test)
+set_tests_properties(exl-mixed-invalid-unwrap-exact-test PROPERTIES WILL_FAIL TRUE)
