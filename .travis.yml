@@ -10,22 +10,22 @@ addons:
     packages:
       - lcov
 
-before_script:
-  - # prepare cmake binary directories
-  - cmake -H. -BBuild-Debug -DCMAKE_BUILD_TYPE=Debug -DEXL_ENABLE_TESTING=ON -DEXL_ENABLE_COVERAGE=ON
-  - cmake -H. -BBuild-Release -DCMAKE_BUILD_TYPE=Release -DEXL_ENABLE_TESTING=ON
-
 script:
-  - # Build and test in debug mode
-  - cmake --build Build-Debug --config Debug
-  - CTEST_OUTPUT_ON_FAILURE=1 cmake --build Build-Debug --config Debug --target test
-  - # Build and test in release mode
-  - cmake --build Build-Release --config Release
-  - CTEST_OUTPUT_ON_FAILURE=1 cmake --build Build-Release --config Release --target test
+  - # Debug build with coverage
+  - mkdir Build-Debug && cd Build-Debug
+  - cmake -DCMAKE_BUILD_TYPE=Debug -DEXL_ENABLE_TESTING=ON -DEXL_ENABLE_COVERAGE=ON ..
+  - cmake --build . --config Debug
+  - ctest -C Debug --output-on-failure
+  - cd ..
+  - # Release build
+  - mkdir Build-Release && cd Build-Release
+  - cmake -DCMAKE_BUILD_TYPE=Release -DEXL_ENABLE_TESTING=ON ..
+  - cmake --build . --config Release
+  - ctest -C Release --output-on-failure
+  - cd ..
 
 after_success:
-  - # Collect coverage report
-  - |
+  - | # Collect coverage report
     if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
         lcov --directory Build-Debug --capture --output-file coverage.info
         lcov --remove coverage.info '/usr/*' "${PWD}"'/libs/*' "${PWD}"'/tests/*' --output-file coverage.info

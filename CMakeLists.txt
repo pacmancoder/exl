@@ -16,7 +16,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 
 add_library(exl-coverage-config INTERFACE)
-if(EXL_ENABLE_COVERAGE)
+if(EXL_ENABLE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     # Add required flags (GCC & LLVM/Clang)
     target_compile_options(exl-coverage-config INTERFACE
             -O0        # no optimization

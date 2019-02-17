@@ -31,7 +31,7 @@ namespace exl
 #if __cpp_variable_templates >= 201304
 
     template <typename T>
-    constexpr in_place_type_t<T> in_place_type;
+    constexpr in_place_type_t<T> in_place_type();
 
 #endif
 
