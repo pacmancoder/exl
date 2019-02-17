@@ -5,6 +5,9 @@ os:
   - osx
   - windows
 
+env:
+  - YARN_GPG=no
+
 addons:
   apt:
     packages:
