@@ -295,6 +295,29 @@ namespace exl
             }
         }
 
+        /// @brief exl::mixed visiting function. Set of matchers should cover all cases, otherwise
+        /// code will not compile. see exl::when, exl::when_exact, exl::otherwise matchers.
+        /// All functors of the matchers should return value of type U.
+        /// @tparam U return type of map expression
+        /// @tparam Matchers set of matcher object types to perform match
+        /// @param matchers set of matcher objects to perform match
+        template <typename U, typename ... Matchers>
+        U map(Matchers&& ... matchers)
+        {
+            return map_internal<U, type_list_t>(std::forward<Matchers>(matchers)...);
+        }
+
+        /// @brief exl::mixed visiting function. Set of matchers should cover all cases, otherwise
+        /// code will not compile. see exl::when, exl::when_exact, exl::otherwise matchers.
+        /// @tparam U return type of map expression
+        /// @tparam Matchers set of matcher object types to perform match
+        /// @param matchers set of matcher objects to perform match
+        template <typename ... Matchers>
+        void match(Matchers&& ... matchers)
+        {
+            return map_internal<void, type_list_t>(std::forward<Matchers>(matchers)...);
+        }
+
         /// Calls destructor for last stored variant in self
         ~mixed()
         {
@@ -431,6 +454,91 @@ namespace exl
         static constexpr tag_t tag_of()
         {
             return impl::type_list_get_type_id<type_list_t, U>::value();
+        }
+
+        template <typename U, typename TL, typename Matcher, typename ... Tail>
+        typename std::enable_if<
+                std::is_same<typename Matcher::kind_t, impl::marker::matcher_when>::value,
+                U
+        >::type map_internal(Matcher&& matcher, Tail&& ... tail)
+        {
+            using Target = typename Matcher::target_type_t;
+            if (is<Target>())
+            {
+                return static_cast<U>(matcher.impl(unsafe_unwrap<Target>()));
+            }
+
+            return static_cast<U>(map_internal<
+                    U,
+                    typename impl::type_list_remove_derived<
+                            typename impl::type_list_remove_same<TL, Target>::type,
+                            Target
+                    >::type,
+                    Tail...
+            >(std::forward<Tail>(tail)...));
+        }
+
+        template <typename U, typename TL, typename Matcher>
+        typename std::enable_if<
+                std::is_same<typename Matcher::kind_t, impl::marker::matcher_when>::value &&
+                        std::is_same<
+                                typename impl::type_list_remove_derived<
+                                        typename impl::type_list_remove_same<
+                                                TL,
+                                                typename Matcher::target_type_t
+                                        >::type,
+                                        typename Matcher::target_type_t
+                                >::type,
+                                impl::type_list<>
+                        >::value,
+                U
+        >::type map_internal(Matcher&& matcher)
+        {
+            return static_cast<U>(matcher.impl(unsafe_unwrap<typename Matcher::target_type_t>()));
+        }
+
+        template <typename U, typename TL, typename Matcher, typename ... Tail>
+        typename std::enable_if<
+                std::is_same<typename Matcher::kind_t, impl::marker::matcher_when_exact>::value,
+                U
+        >::type map_internal(Matcher&& matcher, Tail&& ... tail)
+        {
+            using Target = typename Matcher::target_type_t;
+            if (is_exact<Target>())
+            {
+                return static_cast<U>(matcher.impl(unsafe_unwrap<Target>()));
+            }
+
+            return static_cast<U>(map_internal<
+                    U,
+                    typename impl::type_list_remove_same<TL, Target>::type,
+                    Tail...
+            >(std::forward<Tail>(tail)...));
+        }
+
+        template <typename U, typename TL, typename Matcher>
+        typename std::enable_if<
+                std::is_same<typename Matcher::kind_t, impl::marker::matcher_when_exact>::value &&
+                        std::is_same<
+                                typename impl::type_list_remove_same<
+                                        TL,
+                                        typename Matcher::target_type_t
+                                >::type,
+                                impl::type_list<>
+                        >::value,
+                U
+        >::type map_internal(Matcher&& matcher)
+        {
+            return static_cast<U>(matcher.impl(unsafe_unwrap<typename Matcher::target_type_t>()));
+        }
+
+        template <typename U, typename TL = type_list_t, typename Matcher, typename ... Tail>
+        typename std::enable_if<
+                std::is_same<typename Matcher::kind_t, impl::marker::matcher_otherwise>::value,
+                U
+        >::type map_internal(Matcher&& matcher)
+        {
+            return static_cast<U>(matcher.impl());
         }
 
     private:

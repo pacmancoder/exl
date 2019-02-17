@@ -196,6 +196,15 @@ TEST_CASE("Type list remove same type", "[type_list]")
                 type_list<int, char>
         >::value);
     }
+
+    SECTION("Delete last")
+    {
+        using TL = type_list<std::string>;
+        REQUIRE(std::is_same<
+                typename type_list_remove_same<TL, std::string>::type,
+                type_list<>
+        >::value);
+    }
 }
 
 TEST_CASE("Type list remove derived type", "[type_list]")
@@ -226,23 +235,48 @@ TEST_CASE("Type list remove derived type", "[type_list]")
                 type_list<int, char>
         >::value);
     }
+
+    SECTION("Delete last")
+    {
+        using TL = type_list<std::runtime_error>;
+        REQUIRE(std::is_same<
+                typename type_list_remove_derived<TL, std::exception>::type,
+                type_list<>
+        >::value);
+    }
 }
 
 TEST_CASE("Type list remove same or derived works as expected", "[type_list]")
 {
-    using TL = type_list<
-            std::string,
-            std::exception,
-            std::runtime_error,
-            int,
-            char,
-            std::logic_error
-    >;
+    SECTION("Normal operation")
+    {
+        using TL = type_list<
+                std::string,
+                std::exception,
+                std::runtime_error,
+                int,
+                char,
+                std::logic_error
+        >;
 
-    REQUIRE(std::is_same<
-            typename type_list_remove_derived<TL, std::exception>::type,
-            type_list<std::string, int, char>
-    >::value);
+        REQUIRE(std::is_same<
+                typename type_list_remove_derived<TL, std::exception>::type,
+                type_list<std::string, int, char>
+        >::value);
+    }
+
+    SECTION("Last elements")
+    {
+        using TL = type_list<
+                std::runtime_error,
+                std::logic_error
+        >;
+
+        REQUIRE(std::is_same<
+                typename type_list_remove_derived<TL, std::exception>::type,
+                type_list<>
+        >::value);
+    }
 }
 
 TEST_CASE("Type list id set type params test", "[type_list]")

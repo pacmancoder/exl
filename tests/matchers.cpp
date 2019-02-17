@@ -46,7 +46,7 @@ TEST_CASE("Matcher exl::when can be called with any callable", "[matchers]")
     SECTION("With lambda")
     {
         int result = 1;
-        auto matcher = exl::when(
+        auto matcher = exl::when<int>(
                 [&result](const int& arg)
                 {
                     result = arg;
@@ -60,7 +60,7 @@ TEST_CASE("Matcher exl::when can be called with any callable", "[matchers]")
 
     SECTION("With function pointer")
     {
-        auto matcher = exl::when(&square);
+        auto matcher = exl::when<int>(&square);
 
         REQUIRE(matcher.impl(5) == 25);
     }
@@ -68,7 +68,7 @@ TEST_CASE("Matcher exl::when can be called with any callable", "[matchers]")
     SECTION("With callable object copied")
     {
         CallableMock callable;
-        auto matcher = exl::when(callable);
+        auto matcher = exl::when<int>(callable);
 
         REQUIRE(matcher.impl(5) == 25);
         REQUIRE(matcher.impl.is_copied);
@@ -77,18 +77,28 @@ TEST_CASE("Matcher exl::when can be called with any callable", "[matchers]")
 
     SECTION("With callable object moved")
     {
-        auto matcher = exl::when(CallableMock());
+        auto matcher = exl::when<int>(CallableMock());
 
         REQUIRE(matcher.impl(5) == 25);
         REQUIRE(!matcher.impl.is_copied);
         REQUIRE(matcher.impl.is_moved);
     }
+
 }
 
-TEST_CASE("Matcher exl::when result matcher has correct matching type", "[matchers]")
+TEST_CASE("Matcher exl::when result matcher has correct properties", "[matchers]")
 {
-    auto matcher = exl::when(&square);
-    REQUIRE(std::is_same<decltype(matcher)::type, exl::impl::marker::matcher_when>::value);
+    auto matcher = exl::when<int>(&square);
+
+    SECTION("Kind is correct")
+    {
+        REQUIRE(std::is_same<decltype(matcher)::kind_t, exl::impl::marker::matcher_when>::value);
+    }
+
+    SECTION("Target type is correct")
+    {
+        REQUIRE(std::is_same<typename decltype(matcher)::target_type_t, int>::value);
+    }
 }
 
 TEST_CASE("Matcher exl::when_exact can be called with any callable", "[matchers]")
@@ -96,7 +106,7 @@ TEST_CASE("Matcher exl::when_exact can be called with any callable", "[matchers]
     SECTION("With lambda")
     {
         int result = 1;
-        auto matcher = exl::when_exact(
+        auto matcher = exl::when_exact<int>(
                 [&result](const int& arg)
                 {
                     result = arg;
@@ -110,7 +120,7 @@ TEST_CASE("Matcher exl::when_exact can be called with any callable", "[matchers]
 
     SECTION("With function pointer")
     {
-        auto matcher = exl::when_exact(&square);
+        auto matcher = exl::when_exact<int>(&square);
 
         REQUIRE(matcher.impl(5) == 25);
     }
@@ -118,7 +128,7 @@ TEST_CASE("Matcher exl::when_exact can be called with any callable", "[matchers]
     SECTION("With callable object copied")
     {
         CallableMock callable;
-        auto matcher = exl::when_exact(callable);
+        auto matcher = exl::when_exact<int>(callable);
 
         REQUIRE(matcher.impl(5) == 25);
         REQUIRE(matcher.impl.is_copied);
@@ -127,7 +137,7 @@ TEST_CASE("Matcher exl::when_exact can be called with any callable", "[matchers]
 
     SECTION("With callable object moved")
     {
-        auto matcher = exl::when_exact(CallableMock());
+        auto matcher = exl::when_exact<int>(CallableMock());
 
         REQUIRE(matcher.impl(5) == 25);
         REQUIRE(!matcher.impl.is_copied);
@@ -135,10 +145,22 @@ TEST_CASE("Matcher exl::when_exact can be called with any callable", "[matchers]
     }
 }
 
-TEST_CASE("Matcher exl::when_exact result matcher has correct matching type", "[matchers]")
+TEST_CASE("Matcher exl::when_exact result matcher has correct properties", "[matchers]")
 {
-    auto matcher = exl::when_exact(&square);
-    REQUIRE(std::is_same<decltype(matcher)::type, exl::impl::marker::matcher_when_exact>::value);
+    auto matcher = exl::when_exact<int>(&square);
+
+    SECTION("Kind is correct")
+    {
+        REQUIRE(std::is_same<
+                decltype(matcher)::kind_t,
+                exl::impl::marker::matcher_when_exact
+        >::value);
+    }
+
+    SECTION("Target type is correct")
+    {
+        REQUIRE(std::is_same<typename decltype(matcher)::target_type_t, int>::value);
+    }
 }
 
 TEST_CASE("Matcher exl::otherwise can be called with any callable", "[matchers]")
@@ -185,8 +207,20 @@ TEST_CASE("Matcher exl::otherwise can be called with any callable", "[matchers]"
     }
 }
 
-TEST_CASE("Matcher exl::otherwise result matcher has correct matching type", "[matchers]")
+TEST_CASE("Matcher exl::otherwise result matcher has correct properties", "[matchers]")
 {
     auto matcher = exl::otherwise(&square);
-    REQUIRE(std::is_same<decltype(matcher)::type, exl::impl::marker::matcher_otherwise>::value);
+
+    SECTION("Kind is correct")
+    {
+        REQUIRE(std::is_same<
+                decltype(matcher)::kind_t,
+                exl::impl::marker::matcher_otherwise
+        >::value);
+    }
+
+    SECTION("Target type is correct")
+    {
+        REQUIRE(std::is_same<typename decltype(matcher)::target_type_t, void>::value);
+    }
 }

@@ -19,18 +19,19 @@ namespace exl
             struct matcher_otherwise {};
         }
 
-        template <typename Kind, typename Func>
+        template <typename Kind, typename Target, typename Func>
         class matcher
         {
         public:
-            using type = Kind;
+            using kind_t = Kind;
+            using target_type_t = Target;
 
         public:
             explicit matcher(const Func& rhs)
                     : impl(rhs) {}
 
             explicit matcher(Func&& rhs)
-                : impl(std::move(rhs)) {}
+                    : impl(std::move(rhs)) {}
 
         public:
             Func impl;
@@ -39,9 +40,11 @@ namespace exl
 
 
     template <
+            typename T,
             typename Func,
             typename Matcher = impl::matcher<
                     impl::marker::matcher_when,
+                    T,
                     typename std::decay<Func>::type
             >
     >
@@ -51,9 +54,11 @@ namespace exl
     }
 
     template <
+            typename T,
             typename Func,
             typename Matcher = impl::matcher<
                     impl::marker::matcher_when_exact,
+                    T,
                     typename std::decay<Func>::type
             >
     >
@@ -66,6 +71,7 @@ namespace exl
             typename Func,
             typename Matcher = impl::matcher<
                     impl::marker::matcher_otherwise,
+                    void,
                     typename std::decay<Func>::type
             >
     >

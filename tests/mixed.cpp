@@ -6,7 +6,6 @@
 #include <string>
 #include <algorithm>
 #include <functional>
-#include <exception>
 
 #include <catch2/catch.hpp>
 
@@ -669,50 +668,171 @@ TEST_CASE("Mixed type on_exact() test")
     }
 }
 
-// exl::mixed methods
-// TODO: exl::mixed::is_exact
-// TODO: exl::mixed::unwrap_or
-// TODO: exl::mixed::on
-// TODO: exl::mixed::on_exact
+TEST_CASE("Map without otherwise test")
+{
+    using Mixed = exl::mixed<int, std::runtime_error, ClassMock, SecondClassMock>;
 
-// exl common matcher types <auto include to mixed>
-// TODO: exl::when
-// TODO: exl::when_exact
-// TODO: exl::otherwise
+    Mixed m(0);
 
-/* TODO: exl::mixed::match
- * exl::mixed will have API for safe value unwrapping similar to the
- * Rust's std::Rusult, std::Some, etc.
- *
- * // unwrap_or returns by value and calls F if mixed is not T
- * - unwrap_or<T>(F)
- *
- * // Invokes F if T is base_of or is_same
- * - when<T>(F) -> Self
- *     - T is base_of of is_same
- *
- * - exl::when<T, F>
- *     - has associated type expected_type_t
- *     - has method invoke
- *     - stores functor F
- *
- * - exl::otherwise<F>
- *     - has method invoke
- *     - stores functor F
- *
- * // Map type
- * auto mapped = m.match<int>(
- *         exl::when<char>([](char & v)
- *         {
- *             return v + 1;
- *         }),
- *         exl::when<std::string>([](std::string&)
- *         {
- *             return 42;
- *         }),
- *         exl::otherwise([]()
- *         {
- *             return 0;
- *         })
- * );
- */
+    int result = 0;
+    int mockTag = 0;
+
+    auto do_map = [&result, &mockTag, &m]() -> void
+    {
+        result = m.map<int>(
+                exl::when<std::exception>([](const std::exception&)
+                {
+                    return 2;
+                }),
+                exl::when_exact<int>([](const int&)
+                {
+                    return 1;
+                }),
+                exl::when_exact<ClassMock>([&mockTag](const ClassMock& mock)
+                {
+                    mockTag = mock.original_tag();
+                    return 3;
+                }),
+                exl::when<ClassMock>([&mockTag](const ClassMock& mock)
+                {
+                    mockTag = mock.original_tag();
+                    return 4;
+                })
+        );
+    };
+
+    SECTION("On int")
+    {
+        m = int(42);
+        do_map();
+        REQUIRE(result == 1);
+    }
+
+    SECTION("On std::exception")
+    {
+        m = std::runtime_error("hi");
+        do_map();
+        REQUIRE(result == 2);
+    }
+
+    SECTION("On exact ClassMock")
+    {
+        m = ClassMock(1);
+        do_map();
+        REQUIRE(result == 3);
+        REQUIRE(mockTag == 1);
+    }
+
+    SECTION("On derived from ClassMock")
+    {
+        m = SecondClassMock(2);
+        do_map();
+        REQUIRE(result == 4);
+        REQUIRE(mockTag == 2);
+    }
+}
+
+TEST_CASE("Map with otherwise test")
+{
+    using Mixed = exl::mixed<int, std::runtime_error, std::string, std::logic_error>;
+
+    Mixed m(0);
+
+    int result = 0;
+
+    auto do_map = [&result, &m]() -> void
+    {
+        result = m.map<int>(
+                exl::when_exact<std::logic_error>([](const std::logic_error&)
+                {
+                    return 4;
+                }),
+                exl::when_exact<int>([](const int&)
+                {
+                    return 1;
+                }),
+                exl::otherwise([]()
+                {
+                    return 42;
+                })
+        );
+    };
+
+    SECTION("On int")
+    {
+        m = int(42);
+        do_map();
+        REQUIRE(result == 1);
+    }
+
+    SECTION("On std::logic_error")
+    {
+        m = std::logic_error("hi");
+        do_map();
+        REQUIRE(result == 4);
+    }
+
+    SECTION("On otherwise when std::string")
+    {
+        m = std::string("hi");
+        do_map();
+        REQUIRE(result == 42);
+    }
+
+    SECTION("On otherwise when std::runtime_error")
+    {
+        m = std::runtime_error("hi");
+        do_map();
+        REQUIRE(result == 42);
+    }
+}
+
+TEST_CASE("Map with void return type (match) test")
+{
+    using Mixed = exl::mixed<int, std::runtime_error, std::string, std::logic_error>;
+
+    Mixed m(0);
+
+    int result = 0;
+
+    auto do_map = [&result, &m]() -> void
+    {
+        m.match(
+                exl::when_exact<std::logic_error>([&result](const std::logic_error&)
+                {
+                    result = 4;
+                }),
+                exl::when_exact<int>([&result](const int&)
+                {
+                    result = 1;
+                }),
+                exl::otherwise([&result]()
+                {
+                    result = 42;
+                })
+        );
+    };
+
+    SECTION("On int")
+    {
+        m = int(42);
+        do_map();
+        REQUIRE(result == 1);
+    }
+
+    SECTION("On std::logic_error")
+    {
+        m = std::logic_error("hi");
+        do_map();
+        REQUIRE(result == 4);
+    }
+
+    SECTION("On otherwise when std::string")
+    {
+        m = std::string("hi");
+        do_map();
+        REQUIRE(result == 42);
+    }
+}
+
+// with otherwise
