@@ -5,6 +5,9 @@
 
 #pragma once
 
+#include <utility>
+#include <type_traits>
+
 namespace exl
 {
     namespace impl
@@ -17,9 +20,19 @@ namespace exl
         }
 
         template <typename Kind, typename Func>
-        struct matcher
+        class matcher
         {
+        public:
             using type = Kind;
+
+        public:
+            explicit matcher(const Func& rhs)
+                    : impl(rhs) {}
+
+            explicit matcher(Func&& rhs)
+                : impl(std::move(rhs)) {}
+
+        public:
             Func impl;
         };
     }
@@ -34,7 +47,7 @@ namespace exl
     >
     Matcher when(Func&& func)
     {
-        return Matcher{ std::forward<Func>(func) };
+        return Matcher(std::forward<Func>(func));
     }
 
     template <
@@ -46,7 +59,7 @@ namespace exl
     >
     Matcher when_exact(Func&& func)
     {
-        return Matcher{ std::forward<Func>(func) };
+        return Matcher(std::forward<Func>(func));
     }
 
     template <
@@ -58,6 +71,6 @@ namespace exl
     >
     Matcher otherwise(Func&& func)
     {
-        return Matcher{ std::forward<Func>(func) };
+        return Matcher(std::forward<Func>(func));
     }
 }

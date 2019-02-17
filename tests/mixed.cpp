@@ -118,7 +118,7 @@ TEST_CASE("Mixed type correct destructor call test", "[mixed]")
 
 TEST_CASE("Mixed type assignment operators test", "[mixed]")
 {
-    using Mixed = exl::mixed<int, ClassMock, SecondClassMock>;
+    using Mixed = exl::mixed<int, SecondClassMock, ClassMock>;
     CallCounter calls;
 
     Mixed m1(ClassMock(1, &calls));
@@ -219,17 +219,15 @@ TEST_CASE("Mixed type assignment operators test", "[mixed]")
     }
 }
 
-TEST_CASE("Mixed type construct from another mixed test", "[mixed]")
+template <typename Mixed, typename MixedSubset>
+static void generic_test_construct_from_subset()
 {
-    using Mixed = exl::mixed<int, std::string, ClassMock, char>;
-    using MixedSubset = exl::mixed<ClassMock, char, std::string>;
-
     CallCounter calls;
 
     SECTION("Constructed with same mixed type")
     {
         MixedSubset m1(ClassMock(1, &calls));
-        auto m1_tag = m1.unwrap<ClassMock>().tag();
+        auto m1_tag = m1.template unwrap<ClassMock>().tag();
 
         SECTION("By copy")
         {
@@ -237,8 +235,8 @@ TEST_CASE("Mixed type construct from another mixed test", "[mixed]")
 
             SECTION("Is assigned value correct")
             {
-                REQUIRE(m2.is<ClassMock>());
-                REQUIRE(m2.unwrap<ClassMock>().original_tag() == 1);
+                REQUIRE(m2.template is<ClassMock>());
+                REQUIRE(m2.template unwrap<ClassMock>().original_tag() == 1);
             }
 
             SECTION("Is copy constructed")
@@ -254,8 +252,8 @@ TEST_CASE("Mixed type construct from another mixed test", "[mixed]")
 
             SECTION("Is assigned value correct")
             {
-                REQUIRE(m2.is<ClassMock>());
-                REQUIRE(m2.unwrap<ClassMock>().original_tag() == 1);
+                REQUIRE(m2.template is<ClassMock>());
+                REQUIRE(m2.template unwrap<ClassMock>().original_tag() == 1);
             }
 
             SECTION("Is move constructed")
@@ -269,7 +267,7 @@ TEST_CASE("Mixed type construct from another mixed test", "[mixed]")
     SECTION("Constructed with different mixed type")
     {
         Mixed m1(ClassMock(1, &calls));
-        auto m1_tag = m1.unwrap<ClassMock>().tag();
+        auto m1_tag = m1.template unwrap<ClassMock>().tag();
 
         SECTION("By copy")
         {
@@ -277,8 +275,8 @@ TEST_CASE("Mixed type construct from another mixed test", "[mixed]")
 
             SECTION("Is assigned value correct")
             {
-                REQUIRE(m2.is<ClassMock>());
-                REQUIRE(m2.unwrap<ClassMock>().original_tag() == 1);
+                REQUIRE(m2.template is<ClassMock>());
+                REQUIRE(m2.template unwrap<ClassMock>().original_tag() == 1);
             }
 
             SECTION("Is copy constructed")
@@ -294,8 +292,8 @@ TEST_CASE("Mixed type construct from another mixed test", "[mixed]")
 
             SECTION("Is assigned value correct")
             {
-                REQUIRE(m2.is<ClassMock>());
-                REQUIRE(m2.unwrap<ClassMock>().original_tag() == 1);
+                REQUIRE(m2.template is<ClassMock>());
+                REQUIRE(m2.template unwrap<ClassMock>().original_tag() == 1);
             }
 
             SECTION("Is move constructed")
@@ -307,11 +305,33 @@ TEST_CASE("Mixed type construct from another mixed test", "[mixed]")
     }
 }
 
-TEST_CASE("Mixed type assign from another mixed test", "[mixed]")
+TEST_CASE("Mixed type construct from subset test", "[mixed]")
 {
-    using Mixed = exl::mixed<std::string, char, SecondClassMock, ClassMock>;
-    using MixedSubset = exl::mixed<ClassMock, SecondClassMock>;
+    using Mixed = exl::mixed<int, std::string, ClassMock, char>;
+    using MixedSubset = exl::mixed<char, ClassMock, std::string>;
 
+    generic_test_construct_from_subset<Mixed, MixedSubset>();
+}
+
+TEST_CASE("Mixed type construct from subset test when tail type", "[mixed]")
+{
+    using Mixed = exl::mixed<int, std::string, ClassMock, char>;
+    using MixedSubset = exl::mixed<char, std::string, ClassMock>;
+
+    generic_test_construct_from_subset<Mixed, MixedSubset>();
+}
+
+TEST_CASE("Mixed type construct from subset test when head type", "[mixed]")
+{
+    using Mixed = exl::mixed<int, std::string, ClassMock, char>;
+    using MixedSubset = exl::mixed<ClassMock, char, std::string>;
+
+    generic_test_construct_from_subset<Mixed, MixedSubset>();
+}
+
+template <typename Mixed, typename MixedSubset>
+static void generic_test_assign_from_subset()
+{
     CallCounter calls;
 
     SECTION("Copy-assigned correctly when variants are different")
@@ -319,15 +339,15 @@ TEST_CASE("Mixed type assign from another mixed test", "[mixed]")
         Mixed m1(ClassMock(1, &calls));
         MixedSubset m2(SecondClassMock(2, &calls));
 
-        auto m1_tag = m1.unwrap<ClassMock>().tag();
-        auto m2_tag = m2.unwrap<SecondClassMock>().tag();
+        auto m1_tag = m1.template unwrap<ClassMock>().tag();
+        auto m2_tag = m2.template unwrap<SecondClassMock>().tag();
 
         m1 = m2;
 
         SECTION("New value is correct")
         {
-            REQUIRE(m1.is<SecondClassMock>());
-            REQUIRE(m1.unwrap<SecondClassMock>().original_tag() == 2);
+            REQUIRE(m1.template is<SecondClassMock>());
+            REQUIRE(m1.template unwrap<SecondClassMock>().original_tag() == 2);
         }
 
         SECTION("Assignment operator wasn't called")
@@ -352,15 +372,15 @@ TEST_CASE("Mixed type assign from another mixed test", "[mixed]")
         Mixed m1(ClassMock(1, &calls));
         MixedSubset m2(ClassMock(2, &calls));
 
-        auto m1_tag = m1.unwrap<ClassMock>().tag();
-        auto m2_tag = m2.unwrap<ClassMock>().tag();
+        auto m1_tag = m1.template unwrap<ClassMock>().tag();
+        auto m2_tag = m2.template unwrap<ClassMock>().tag();
 
         m1 = m2;
 
         SECTION("New value is correct")
         {
-            REQUIRE(m1.is<ClassMock>());
-            REQUIRE(m1.unwrap<ClassMock>().original_tag() == 2);
+            REQUIRE(m1.template is<ClassMock>());
+            REQUIRE(m1.template unwrap<ClassMock>().original_tag() == 2);
         }
 
         SECTION("Old value wasn't destroyed")
@@ -385,15 +405,15 @@ TEST_CASE("Mixed type assign from another mixed test", "[mixed]")
         Mixed m1(ClassMock(1, &calls));
         MixedSubset m2(SecondClassMock(2, &calls));
 
-        auto m1_tag = m1.unwrap<ClassMock>().tag();
-        auto m2_tag = m2.unwrap<SecondClassMock>().tag();
+        auto m1_tag = m1.template unwrap<ClassMock>().tag();
+        auto m2_tag = m2.template unwrap<SecondClassMock>().tag();
 
         m1 = std::move(m2);
 
         SECTION("New value is correct")
         {
-            REQUIRE(m1.is<SecondClassMock>());
-            REQUIRE(m1.unwrap<SecondClassMock>().original_tag() == 2);
+            REQUIRE(m1.template is<SecondClassMock>());
+            REQUIRE(m1.template unwrap<SecondClassMock>().original_tag() == 2);
         }
 
         SECTION("Assignment operator wasn't called")
@@ -418,15 +438,15 @@ TEST_CASE("Mixed type assign from another mixed test", "[mixed]")
         Mixed m1(ClassMock(1, &calls));
         MixedSubset m2(ClassMock(2, &calls));
 
-        auto m1_tag = m1.unwrap<ClassMock>().tag();
-        auto m2_tag = m2.unwrap<ClassMock>().tag();
+        auto m1_tag = m1.template unwrap<ClassMock>().tag();
+        auto m2_tag = m2.template unwrap<ClassMock>().tag();
 
         m1 = std::move(m2);
 
         SECTION("New value is correct")
         {
-            REQUIRE(m1.is<ClassMock>());
-            REQUIRE(m1.unwrap<ClassMock>().original_tag() == 2);
+            REQUIRE(m1.template is<ClassMock>());
+            REQUIRE(m1.template unwrap<ClassMock>().original_tag() == 2);
         }
 
         SECTION("Old value wasn't destroyed")
@@ -445,6 +465,30 @@ TEST_CASE("Mixed type assign from another mixed test", "[mixed]")
             REQUIRE(calls.count(CallType::Move, m2_tag) == 1);
         }
     }
+}
+
+TEST_CASE("Mixed type assign from subset test", "[mixed]")
+{
+    using Mixed = exl::mixed<std::string, char, SecondClassMock, ClassMock, std::exception>;
+    using MixedSubset = exl::mixed<std::string, SecondClassMock, ClassMock, char>;
+
+    generic_test_assign_from_subset<Mixed, MixedSubset>();
+}
+
+TEST_CASE("Mixed type assign from subset test when head type", "[mixed]")
+{
+    using Mixed = exl::mixed<std::string, char, SecondClassMock, ClassMock, std::exception>;
+    using MixedSubset = exl::mixed<ClassMock, char, SecondClassMock>;
+
+    generic_test_assign_from_subset<Mixed, MixedSubset>();
+}
+
+TEST_CASE("Mixed type assign from subset test when tail type", "[mixed]")
+{
+    using Mixed = exl::mixed<std::string, char, SecondClassMock, ClassMock, std::exception>;
+    using MixedSubset = exl::mixed<SecondClassMock, char, ClassMock>;
+
+    generic_test_assign_from_subset<Mixed, MixedSubset>();
 }
 
 TEST_CASE("Mixed type emplace test", "[mixed]")
