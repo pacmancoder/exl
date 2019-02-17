@@ -269,6 +269,32 @@ namespace exl
             return unsafe_unwrap<U>();
         }
 
+        /// @brief calls func with argument as argument to requested type if contained type is
+        /// same of derived from U
+        /// @tparam U type to check for
+        /// @tparam Func functor to call when type is same or derived
+        template <typename U, typename Func>
+        void on(Func&& func)
+        {
+            if (is<U>())
+            {
+                func(unsafe_unwrap<U>());
+            }
+        }
+
+        /// @brief calls func with argument as argument to requested type if contained type is same
+        /// as U
+        /// @tparam U type to check for
+        /// @tparam Func functor to call when type is same
+        template <typename U, typename Func>
+        void on_exact(Func&& func)
+        {
+            if (is_exact<U>())
+            {
+                func(unsafe_unwrap<U>());
+            }
+        }
+
         /// Calls destructor for last stored variant in self
         ~mixed()
         {

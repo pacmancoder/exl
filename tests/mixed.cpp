@@ -599,6 +599,76 @@ TEST_CASE("Mixed type in-place construction test", "[mixed]")
     }
 }
 
+TEST_CASE("Mixed type on() test")
+{
+    using Mixed = exl::mixed<ClassMock, SecondClassMock, std::string>;
+
+    CallCounter counter;
+    Mixed m(exl::in_place_type_t<SecondClassMock>(), 1, &counter);
+    bool functor_called = false;
+
+    SECTION("Triggers functor when same type")
+    {
+        m.on<ClassMock>(
+                [&functor_called](ClassMock&)
+                {
+                    functor_called = true;
+                }
+        );
+
+        REQUIRE(functor_called);
+        REQUIRE(counter.count(CallType::Copy, 1) == 0);
+        REQUIRE(counter.count(CallType::Move, 1) == 0);
+    }
+
+    SECTION("Not triggers when different type")
+    {
+        m.on<std::string>(
+                [&functor_called](const std::string&)
+                {
+                    functor_called = true;
+                }
+        );
+
+        REQUIRE(!functor_called);
+    }
+}
+
+TEST_CASE("Mixed type on_exact() test")
+{
+    using Mixed = exl::mixed<ClassMock, SecondClassMock>;
+
+    CallCounter counter;
+    Mixed m(exl::in_place_type_t<SecondClassMock>(), 1, &counter);
+    bool functor_called = false;
+
+    SECTION("Triggers functor when same type")
+    {
+        m.on_exact<SecondClassMock>(
+                [&functor_called](SecondClassMock&)
+                {
+                    functor_called = true;
+                }
+        );
+
+        REQUIRE(functor_called);
+        REQUIRE(counter.count(CallType::Copy, 1) == 0);
+        REQUIRE(counter.count(CallType::Move, 1) == 0);
+    }
+
+    SECTION("Not triggers when different type")
+    {
+        m.on_exact<ClassMock>(
+                [&functor_called](const ClassMock&)
+                {
+                    functor_called = true;
+                }
+        );
+
+        REQUIRE(!functor_called);
+    }
+}
+
 // exl::mixed methods
 // TODO: exl::mixed::is_exact
 // TODO: exl::mixed::unwrap_or
