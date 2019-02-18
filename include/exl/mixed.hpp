@@ -99,24 +99,29 @@ namespace exl
         /// @tparam U Union variant type
         template <
                 typename U,
+                typename Decayed = typename std::decay<U>::type,
                 typename = typename std::enable_if<
-                        !std::is_base_of<
-                                impl::marker::mixed,
-                                typename std::decay<U>::type
-                        >::value
-                >::type
+                        !std::is_base_of<impl::marker::mixed, Decayed>::value
+                >::type,
+                typename T = typename impl::type_list_get_best_match<type_list_t, U>::type,
+                typename = typename std::enable_if<std::is_constructible<T, U>::value>::type
         >
         mixed(U&& rhs)
                 : storage_()
-                , tag_(tag_of<typename std::decay<U>::type>())
+                , tag_(tag_of<T>())
         {
-            construct_from_specific(std::forward<U>(rhs));
+            construct_from<T>(std::forward<U>(rhs));
         }
 
         /// @brief Constructs mixed with value constructed in-place
         /// @tparam U type to in-place construct
         /// @tparam Args in-place construction arguments
-        template <typename U, typename ... Args>
+        template <
+                typename U,
+                typename T = typename impl::type_list_get_best_match<type_list_t, U>::type,
+                typename = typename std::enable_if<std::is_constructible<T, U>::value>::type,
+                typename ... Args
+        >
         explicit mixed(in_place_type_t<U>, Args&& ... args)
                 : storage_()
                 , tag_(tag_of<U>())
@@ -128,25 +133,25 @@ namespace exl
         /// @tparam U Union variant type
         template <
                 typename U,
+                typename Decayed = typename std::decay<U>::type,
                 typename = typename std::enable_if<
-                        !std::is_base_of<
-                                impl::marker::mixed,
-                                typename std::decay<U>::type
-                        >::value
-                >::type
+                        !std::is_base_of<impl::marker::mixed, Decayed>::value
+                >::type,
+                typename T = typename impl::type_list_get_best_match<type_list_t, U>::type,
+                typename = typename std::enable_if<std::is_constructible<T, U>::value>::type
         >
         mixed<Types...>& operator=(U&& rhs)
         {
-            constexpr auto newTag = tag_of<typename std::decay<U>::type>();
+            constexpr auto newTag = tag_of<T>();
 
             if (newTag == tag())
             {
-                unsafe_unwrap<U>() = std::forward<U>(rhs);
+                unsafe_unwrap<T>() = std::forward<U>(rhs);
             }
             else
             {
                 destroy();
-                construct_from_specific(std::forward<U>(rhs));
+                construct_from<T>(std::forward<U>(rhs));
                 tag_ = newTag;
             }
 
@@ -351,10 +356,10 @@ namespace exl
             StorageOperations::destroy(storage_, tag_);
         }
 
-        template <typename U>
-        void construct_from_specific(U&& rhs)
+        template <typename T, typename U>
+        void construct_from(U&& rhs)
         {
-            new(&storage_) (typename std::decay<U>::type)(std::forward<U>(rhs));
+            new(&storage_) (T)(std::forward<U>(rhs));
         }
 
         template <typename U>

@@ -18,7 +18,7 @@ using namespace exl::mock;
 
 TEST_CASE("Mixed type construction test", "[mixed]")
 {
-    using Mixed = exl::mixed<int, char, std::string, ClassMock, SecondClassMock>;
+    using Mixed = exl::mixed<int, char, std::string, ClassMock, SecondClassMock, wchar_t*>;
     CallCounter calls;
     ClassMock mock(1, &calls);
 
@@ -62,6 +62,23 @@ TEST_CASE("Mixed type construction test", "[mixed]")
         {
             REQUIRE(m.is<ClassMock>());
         }
+    }
+
+    SECTION("Constructs from convertible type")
+    {
+        Mixed m("hello");
+
+        REQUIRE(m.is<std::string>());
+        REQUIRE(m.unwrap_exact<std::string>() == std::string("hello"));
+    }
+
+    SECTION("Constructs from pointer type")
+    {
+        wchar_t str[] = { L'h', L'e', L'l', L'l', L'o', L'\0' };
+        Mixed m(str);
+
+        REQUIRE(m.is<wchar_t*>());
+        REQUIRE(std::wstring(m.unwrap_exact<wchar_t*>()) == std::wstring(L"hello"));
     }
 }
 
@@ -256,6 +273,15 @@ TEST_CASE("Mixed type assignment operators test", "[mixed]")
                 REQUIRE(m1.unwrap<ClassMock>().original_tag() == 2);
             }
         }
+    }
+
+    SECTION("Convertible assign")
+    {
+        exl::mixed<std::string, int> m(1);
+        m = "hello";
+
+        REQUIRE(m.is<std::string>());
+        REQUIRE(m.unwrap_exact<std::string>() == std::string("hello"));
     }
 }
 
@@ -834,5 +860,3 @@ TEST_CASE("Map with void return type (match) test")
         REQUIRE(result == 42);
     }
 }
-
-// with otherwise

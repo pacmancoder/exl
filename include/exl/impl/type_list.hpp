@@ -6,6 +6,7 @@
 #pragma once
 
 #include <cstdint>
+#include <utility>
 
 namespace exl { namespace impl
 {
@@ -504,4 +505,78 @@ namespace exl { namespace impl
                 type_list<Head>
         >::type;
     };
+
+    /// @brief Represents list of type IDs. Mostly used in internal methods
+    template <type_list_tag_t ...>
+    struct type_list_id_sequence {};
+
+    /// @brief Produced a type_list_id_sequence instantiation for specified type list
+    /// @tparam TL type list to produce sequence for
+    template <typename TL>
+    struct type_list_id_sequence_for;
+
+    template <typename ... Types>
+    struct type_list_id_sequence_for<type_list<Types...>>
+    {
+    private:
+        using TL = type_list<Types...>;
+
+    public:
+        using type = type_list_id_sequence<type_list_get_type_id<TL, Types>::value()...>;
+    };
+
+    // NOTE: Design of best-match overload implementation was "greatly inspired" by code from
+    // mpark-variant project (https://github.com/mpark/variant)
+
+    template <type_list_tag_t ID, typename T>
+    struct type_list_best_match_overload_leaf
+    {
+        using Func = std::integral_constant<type_list_tag_t, ID> (*)(T);
+
+        constexpr operator Func() const { return nullptr; }
+    };
+
+    template <typename TL>
+    struct type_list_best_match_overload_impl;
+
+    template <typename ... Types>
+    struct type_list_best_match_overload_impl<type_list<Types...>>
+    {
+    private:
+        using TL = type_list<Types...>;
+
+        template <typename Sequence>
+        struct Impl;
+
+        template <type_list_tag_t ... IDs>
+        struct Impl<type_list_id_sequence<IDs...>>
+                : type_list_best_match_overload_leaf<IDs, Types> ...
+        {
+        };
+
+    public:
+        using type = Impl<typename type_list_id_sequence_for<TL>::type>;
+    };
+
+    template <typename TL>
+    using type_list_best_match_overload = typename type_list_best_match_overload_impl<TL>::type;
+
+    template <typename TL, typename T>
+    struct type_list_get_best_match_id
+    {
+        static type_list_tag_t constexpr value()
+        {
+            return std::result_of<type_list_best_match_overload<TL>(T&&)>::type::value;
+        };
+    };
+
+    template <typename TL, typename T>
+    struct type_list_get_best_match
+    {
+        using type = typename type_list_get_type_for_id<
+                TL,
+                type_list_get_best_match_id<TL, T>::value()
+        >::type;
+    };
+
 }}

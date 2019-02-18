@@ -421,3 +421,75 @@ TEST_CASE("Type list id set contains test", "[type_list]")
         REQUIRE(!Contains::check(45));
     }
 }
+
+TEST_CASE("Type list get id sequence for test", "[type_list]")
+{
+    SECTION("Normal type list")
+    {
+        REQUIRE(std::is_same<
+                typename type_list_id_sequence_for<type_list<char, int, std::string>>::type,
+                type_list_id_sequence<2, 1, 0>
+        >::value);
+    }
+
+    SECTION("Single element test")
+    {
+        REQUIRE(std::is_same<
+                typename type_list_id_sequence_for<type_list<char>>::type,
+                type_list_id_sequence<0>
+        >::value);
+    }
+
+    SECTION("No elements test")
+    {
+        REQUIRE(std::is_same<
+                typename type_list_id_sequence_for<type_list<>>::type,
+                type_list_id_sequence<>
+        >::value);
+    }
+}
+
+TEST_CASE("Best match test", "[type_list]")
+{
+    using TL = type_list<wchar_t*, std::string, char, std::wstring, int>;
+
+    SECTION("Selects exact type when available")
+    {
+        REQUIRE(std::is_same<
+                type_list_get_best_match<TL, std::string>::type,
+                std::string
+        >::value);
+    }
+
+    SECTION("Selects pointer when exact type available")
+    {
+        REQUIRE(std::is_same<
+                type_list_get_best_match<TL, wchar_t*>::type,
+                wchar_t*
+        >::value);
+    }
+
+    SECTION("Selects std::string when conversion available")
+    {
+        REQUIRE(std::is_same<
+                type_list_get_best_match<TL, char*>::type,
+                std::string
+        >::value);
+    }
+
+    SECTION("Selects int when not fits in char")
+    {
+        REQUIRE(std::is_same<
+                type_list_get_best_match<TL, decltype(422)>::type,
+                int
+        >::value);
+    }
+
+    SECTION("Selects char when fits in char")
+    {
+        REQUIRE(std::is_same<
+                type_list_get_best_match<TL, decltype(char(1))>::type,
+                char
+        >::value);
+    }
+}
