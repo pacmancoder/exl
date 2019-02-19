@@ -11,6 +11,7 @@ add_executable(exl-test
         type_list.cpp
         matchers.cpp
         mixed.cpp
+        mixed_option.cpp
 )
 
 target_link_libraries(exl-test PRIVATE exl)

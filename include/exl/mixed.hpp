@@ -22,11 +22,25 @@ namespace exl
     }}
 
     template <typename T>
-    class in_place_type_t
+    struct in_place_type_t
     {
-    public:
         explicit in_place_type_t() = default;
     };
+
+    namespace impl
+    {
+        template <typename T>
+        struct is_in_place_type_t
+        {
+            static constexpr bool value() { return false; }
+        };
+
+        template <typename U>
+        struct is_in_place_type_t<in_place_type_t<U>>
+        {
+            static constexpr bool value() { return true; }
+        };
+    }
 
 #if __cpp_variable_templates >= 201304
 
@@ -101,7 +115,8 @@ namespace exl
                 typename U,
                 typename Decayed = typename std::decay<U>::type,
                 typename = typename std::enable_if<
-                        !std::is_base_of<impl::marker::mixed, Decayed>::value
+                        !std::is_base_of<impl::marker::mixed, Decayed>::value &&
+                                !impl::is_in_place_type_t<Decayed>::value()
                 >::type,
                 typename T = typename impl::type_list_get_best_match<type_list_t, U>::type,
                 typename = typename std::enable_if<std::is_constructible<T, U>::value>::type
@@ -127,6 +142,13 @@ namespace exl
                 , tag_(tag_of<U>())
         {
             construct_in_place<U>(std::forward<Args>(args)...);
+        }
+
+        /// @brief Verbose alias for in-place construction
+        template <typename U, typename ... Args>
+        static mixed<Types...> make(Args&& ... args)
+        {
+            return mixed<Types...>(in_place_type_t<U>(), std::forward<Args>(args)...);
         }
 
         /// @brief Assigns specific union variant of self
@@ -323,16 +345,29 @@ namespace exl
             return map_internal<void, type_list_t>(std::forward<Matchers>(matchers)...);
         }
 
+        /// @brief Returns current tag of mixed type. Please use returned value for check against
+        /// exl::mixed::tag_of<T>()
+        tag_t tag()
+        {
+            return tag_;
+        }
+
+        template <typename U>
+        static constexpr tag_t tag_of()
+        {
+            return impl::type_list_get_type_id<type_list_t, U>::value();
+        }
+
         /// Calls destructor for last stored variant in self
-        ~mixed()
+        virtual ~mixed()
         {
             destroy();
         }
 
-    private:
+    protected:
         using StorageOperations = impl::mixed_storage_operations<type_list_t, storage_t>;
 
-    private:
+    protected:
         template <typename U>
         void assert_type()
         {
@@ -448,17 +483,6 @@ namespace exl
         U& unsafe_unwrap()
         {
             return reinterpret_cast<U&>(storage_);
-        }
-
-        tag_t tag()
-        {
-            return tag_;
-        }
-
-        template <typename U>
-        static constexpr tag_t tag_of()
-        {
-            return impl::type_list_get_type_id<type_list_t, U>::value();
         }
 
         template <typename U, typename TL, typename Matcher, typename ... Tail>
