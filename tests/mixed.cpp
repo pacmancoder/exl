@@ -82,6 +82,20 @@ TEST_CASE("Mixed type construction test", "[mixed]")
     }
 }
 
+TEST_CASE("Type List tag info test", "[mixed]")
+{
+    using Mixed = exl::mixed<std::runtime_error, int, char>;
+
+    Mixed m1(exl::in_place_type_t<std::runtime_error>(), "hi");
+    REQUIRE(m1.tag() == Mixed::tag_of<std::runtime_error>());
+
+    Mixed m2(exl::in_place_type_t<int>(), 422);
+    REQUIRE(m2.tag() == Mixed::tag_of<int>());
+
+    Mixed m3(exl::in_place_type_t<char>(), 'x');
+    REQUIRE(m3.tag() == Mixed::tag_of<char>());
+}
+
 TEST_CASE("Type check test", "[mixed]")
 {
     using Mixed = exl::mixed<std::runtime_error, int, char, std::logic_error>;
@@ -96,6 +110,21 @@ TEST_CASE("Type check test", "[mixed]")
     {
         Mixed m(std::runtime_error("hello"));
         REQUIRE(m.is<std::exception>());
+    }
+}
+
+TEST_CASE("Tag switch compilation test", "[mixed]")
+{
+    using Mixed = exl::mixed<std::runtime_error, int, char, std::logic_error>;
+
+    Mixed m(399);
+
+    switch (m.tag())
+    {
+        case Mixed::tag_of<std::runtime_error>(): break;
+        case Mixed::tag_of<int>(): break;
+        case Mixed::tag_of<char>(): break;
+        case Mixed::tag_of<std::logic_error>(): break;
     }
 }
 
@@ -624,7 +653,7 @@ TEST_CASE("Mixed type in-place construction test", "[mixed]")
     }
 }
 
-TEST_CASE("Mixed type on() test")
+TEST_CASE("Mixed type on() test", "[mixed]")
 {
     using Mixed = exl::mixed<ClassMock, SecondClassMock, std::string>;
 
@@ -659,7 +688,7 @@ TEST_CASE("Mixed type on() test")
     }
 }
 
-TEST_CASE("Mixed type on_exact() test")
+TEST_CASE("Mixed type on_exact() test", "[mixed]")
 {
     using Mixed = exl::mixed<ClassMock, SecondClassMock>;
 
@@ -694,7 +723,7 @@ TEST_CASE("Mixed type on_exact() test")
     }
 }
 
-TEST_CASE("Map without otherwise test")
+TEST_CASE("Map without otherwise test", "[mixed]")
 {
     using Mixed = exl::mixed<int, std::runtime_error, ClassMock, SecondClassMock>;
 
@@ -758,7 +787,7 @@ TEST_CASE("Map without otherwise test")
     }
 }
 
-TEST_CASE("Map with otherwise test")
+TEST_CASE("Map with otherwise test", "[mixed]")
 {
     using Mixed = exl::mixed<int, std::runtime_error, std::string, std::logic_error>;
 
@@ -813,7 +842,7 @@ TEST_CASE("Map with otherwise test")
     }
 }
 
-TEST_CASE("Map with void return type (match) test")
+TEST_CASE("Map with void return type (match) test", "[mixed]")
 {
     using Mixed = exl::mixed<int, std::runtime_error, std::string, std::logic_error>;
 
@@ -858,5 +887,35 @@ TEST_CASE("Map with void return type (match) test")
         m = std::string("hi");
         do_map();
         REQUIRE(result == 42);
+    }
+}
+
+TEST_CASE("Mixed make test", "[mixed]")
+{
+    using Mixed = exl::mixed<int, std::runtime_error, std::string, ClassMock>;
+
+    SECTION("Forwards elements")
+    {
+        auto m = Mixed::make<std::string>("hello");
+        REQUIRE(m.is<std::string>());
+        REQUIRE(m.unwrap<std::string>() == std::string("hello"));
+    }
+
+    SECTION("RVO triggered")
+    {
+        CallCounter counter;
+        auto m = Mixed::make<ClassMock>(1, &counter);
+
+        REQUIRE(counter.count(CallType::Construct, 1) == 1);
+        REQUIRE(counter.count(CallType::Move, 1) == 0);
+        REQUIRE(counter.count(CallType::Copy, 1) == 0);
+    }
+
+    SECTION("No arguments")
+    {
+        auto m = Mixed::make<std::string>();
+
+        REQUIRE(m.is<std::string>());
+        REQUIRE(m.unwrap<std::string>().empty());
     }
 }
