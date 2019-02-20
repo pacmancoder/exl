@@ -47,7 +47,6 @@ namespace exl { namespace impl
     struct type_list_get_size<type_list<Head, Types...>>
     {
     public:
-
         /// @brief Returns type list size
         static constexpr type_list_tag_t value()
         {
@@ -74,7 +73,6 @@ namespace exl { namespace impl
     struct type_list_get_type_id<type_list<T, Types...>, T>
     {
     public:
-
         /// @brief Returns id of Specified type
         static constexpr type_list_tag_t value()
         {
@@ -288,7 +286,6 @@ namespace exl { namespace impl
     struct type_list_get_max_alignof<type_list<Head, Types...>>
     {
     public:
-
         /// @brief Returns storage type align which suitable for any type in type list
         static constexpr size_t value()
         {
@@ -412,7 +409,6 @@ namespace exl { namespace impl
         >::value();
 
     public:
-
         /// @brief Returns ID which mapped to subset's type in superset type list
         static type_list_tag_t get(type_list_tag_t targetID)
         {
@@ -426,7 +422,6 @@ namespace exl { namespace impl
     struct type_list_subset_id_mapping<TL, SubsetTL, 0>
     {
     public:
-
         static type_list_tag_t get(type_list_tag_t)
         {
             return type_list_get_type_id<

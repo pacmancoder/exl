@@ -623,7 +623,6 @@ TEST_CASE("Mixed type emplace test", "[mixed]")
     {
         REQUIRE(calls.count(CallType::Assign, 1) == 0);
     }
-
 }
 
 TEST_CASE("Mixed type in-place construction test", "[mixed]")
