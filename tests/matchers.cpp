@@ -83,7 +83,6 @@ TEST_CASE("Matcher exl::when can be called with any callable", "[matchers]")
         REQUIRE(!matcher.impl.is_copied);
         REQUIRE(matcher.impl.is_moved);
     }
-
 }
 
 TEST_CASE("Matcher exl::when result matcher has correct properties", "[matchers]")
