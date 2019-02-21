@@ -169,6 +169,23 @@ TEST_CASE("Unwrap test", "[mixed]")
     }
 }
 
+TEST_CASE("Const unwrap test", "[mixed]")
+{
+    using Mixed = exl::mixed<std::runtime_error, int, char, std::logic_error>;
+
+    SECTION("When type is exact equal")
+    {
+        const Mixed m(399);
+        REQUIRE(m.unwrap<int>() == 399);
+    }
+
+    SECTION("When type is exact equal")
+    {
+        const Mixed m(std::logic_error("Hello"));
+        REQUIRE(std::string(m.unwrap<std::exception>().what()) == std::string("Hello"));
+    }
+}
+
 TEST_CASE("Unwrap exact test", "[mixed]")
 {
     using Mixed = exl::mixed<std::runtime_error, int, char, std::logic_error>;
@@ -182,6 +199,23 @@ TEST_CASE("Unwrap exact test", "[mixed]")
     SECTION("When type is exact equal on std::runtime_error")
     {
         Mixed m(std::runtime_error("hello"));
+        REQUIRE(std::string(m.unwrap_exact<std::runtime_error>().what()) == std::string("hello"));
+    }
+}
+
+TEST_CASE("Const unwrap exact test", "[mixed]")
+{
+    using Mixed = exl::mixed<std::runtime_error, int, char, std::logic_error>;
+
+    SECTION("When type is exact equal")
+    {
+        const Mixed m(422);
+        REQUIRE(m.unwrap_exact<int>() == 422);
+    }
+
+    SECTION("When type is exact equal on std::runtime_error")
+    {
+        const Mixed m(std::runtime_error("hello"));
         REQUIRE(std::string(m.unwrap_exact<std::runtime_error>().what()) == std::string("hello"));
     }
 }
@@ -221,6 +255,9 @@ TEST_CASE("Mixed type assignment operators test", "[mixed]")
             {
                 REQUIRE(calls.count(CallType::Construct, as_copied_tag(2)) == 1);
                 REQUIRE(calls.count(CallType::Copy, 2) == 1);
+
+                REQUIRE(calls.count(CallType::Copy, as_copied_tag(2)) == 0);
+                REQUIRE(calls.count(CallType::Move, as_copied_tag(2)) == 0);
             }
 
             SECTION("Is previous value deleted")
@@ -237,6 +274,9 @@ TEST_CASE("Mixed type assignment operators test", "[mixed]")
             {
                 REQUIRE(calls.count(CallType::Construct, as_moved_tag(2)) == 1);
                 REQUIRE(calls.count(CallType::Move, 2) == 1);
+
+                REQUIRE(calls.count(CallType::Copy, as_moved_tag(2)) == 0);
+                REQUIRE(calls.count(CallType::Move, as_moved_tag(2)) == 0);
             }
 
             SECTION("Is previous value deleted")
@@ -319,7 +359,7 @@ static void generic_test_construct_from_subset()
 {
     CallCounter calls;
 
-    SECTION("Constructed with same mixed type")
+    SECTION("Constructed with subset mixed type")
     {
         MixedSubset m1(ClassMock(1, &calls));
         auto m1_tag = m1.template unwrap<ClassMock>().tag();
@@ -359,7 +399,7 @@ static void generic_test_construct_from_subset()
         }
     }
 
-    SECTION("Constructed with different mixed type")
+    SECTION("Constructed with same mixed type")
     {
         Mixed m1(ClassMock(1, &calls));
         auto m1_tag = m1.template unwrap<ClassMock>().tag();
@@ -584,6 +624,13 @@ TEST_CASE("Mixed type assign from subset test when tail type", "[mixed]")
     using MixedSubset = exl::mixed<SecondClassMock, char, ClassMock>;
 
     generic_test_assign_from_subset<Mixed, MixedSubset>();
+}
+
+TEST_CASE("Mixed type assign from same test", "[mixed]")
+{
+    using Mixed = exl::mixed<std::string, char, SecondClassMock, ClassMock, std::exception>;
+
+    generic_test_assign_from_subset<Mixed, Mixed>();
 }
 
 TEST_CASE("Mixed type emplace test", "[mixed]")
@@ -917,4 +964,11 @@ TEST_CASE("Mixed make test", "[mixed]")
         REQUIRE(m.is<std::string>());
         REQUIRE(m.unwrap<std::string>().empty());
     }
+}
+
+TEST_CASE("Mixed const assignment test", "[option]")
+{
+    const auto option_one = exl::mixed<int, char>::make<int>(1);
+    auto option_two = exl::mixed<int, char>::make<char>(42);
+    option_two = option_one;
 }

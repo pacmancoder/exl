@@ -162,6 +162,35 @@ namespace exl
                 typename T = typename impl::type_list_get_best_match<type_list_t, U>::type,
                 typename = typename std::enable_if<std::is_constructible<T, U>::value>::type
         >
+        mixed<Types...>& operator=(const U& rhs)
+        {
+            constexpr auto newTag = tag_of<T>();
+
+            if (newTag == tag())
+            {
+                unsafe_unwrap<T>() = rhs;
+            }
+            else
+            {
+                destroy();
+                construct_from<T>(rhs);
+                tag_ = newTag;
+            }
+
+            return *this;
+        }
+
+        /// @brief Assigns specific union variant of self
+        /// @tparam U Union variant type
+        template <
+                typename U,
+                typename Decayed = typename std::decay<U>::type,
+                typename = typename std::enable_if<
+                        !std::is_base_of<impl::marker::mixed, Decayed>::value
+                >::type,
+                typename T = typename impl::type_list_get_best_match<type_list_t, U>::type,
+                typename = typename std::enable_if<std::is_constructible<T, U>::value>::type
+        >
         mixed<Types...>& operator=(U&& rhs)
         {
             constexpr auto newTag = tag_of<T>();
@@ -181,6 +210,38 @@ namespace exl
         }
 
         /// @brief Copy-assigns exl::mixed of the same type
+        mixed<Types...>& operator=(const mixed<Types...>& rhs)
+        {
+            if (tag_ != rhs.tag_)
+            {
+                destroy();
+                construct_from_subset_by_copy(rhs);
+            }
+            else
+            {
+                assign_from_subset_by_copy(rhs);
+            }
+
+            return *this;
+        }
+
+        /// @brief Move-assigns exl::mixed of subset type
+        mixed<Types...>& operator=(mixed<Types...>&& rhs) noexcept
+        {
+            if (tag_ != rhs.tag_)
+            {
+                destroy();
+                construct_from_subset_by_move(std::move(rhs));
+            }
+            else
+            {
+                assign_from_subset_by_move(std::move(rhs));
+            }
+
+            return *this;
+        }
+
+        /// @brief Copy-assigns exl::mixed of the subset type
         template <typename ... RhsTypes>
         mixed<Types...>& operator=(const mixed<RhsTypes...>& rhs)
         {
@@ -202,7 +263,7 @@ namespace exl
             return *this;
         }
 
-        /// @brief Move-assigns exl::mixed of same type
+        /// @brief Move-assigns exl::mixed of subset type
         template <typename ... RhsTypes>
         mixed<Types...>& operator=(mixed<RhsTypes...>&& rhs) noexcept
         {
@@ -214,11 +275,11 @@ namespace exl
             if (tag_ != IDMap::get(rhs.tag_))
             {
                 destroy();
-                construct_from_subset_by_move(std::forward<mixed<RhsTypes...>>(rhs));
+                construct_from_subset_by_move(std::move(rhs));
             }
             else
             {
-                assign_from_subset_by_move(std::forward<mixed<RhsTypes...>>(rhs));
+                assign_from_subset_by_move(std::move(rhs));
             }
 
             return *this;
@@ -240,7 +301,7 @@ namespace exl
         /// @return True when stored type is same as specified type U or derived from it, false in
         /// other case.
         template <typename U>
-        bool is()
+        bool is() const
         {
             return
                     impl::type_list_id_set_contains<
@@ -258,7 +319,7 @@ namespace exl
         /// @tparam U Type to perform check for
         /// @return True when stored type is same as specified type U, false in other case.
         template <typename U>
-        bool is_exact()
+        bool is_exact() const
         {
             return impl::type_list_get_type_id<type_list_t, U>::value() == tag_;
         }
@@ -280,6 +341,23 @@ namespace exl
             return unsafe_unwrap<U>();
         }
 
+        /// @brief Returns const reference to the value with specified type.
+        ///
+        /// Calls std::terminate if stored type is neither equal to the requested type nor derived
+        /// from it.
+        /// Please use this method only with conjunction with exl::mixed::is() of when type is
+        /// clearly known at the moment of call (e.g. right after explicit construction of
+        /// ext::mixed) In other cases please use indirect access methods.
+        ///
+        /// @tparam U Requested type to unwrap
+        /// @return Const reference to unwrapped type
+        template <typename U>
+        const U& unwrap() const
+        {
+            assert_type<U>();
+            return unsafe_unwrap<U>();
+        }
+
         /// @brief Returns reference to the value with specified type.
         ///
         /// Calls std::terminate if stored type is not equal to the requested type.
@@ -291,6 +369,22 @@ namespace exl
         /// @return Reference to unwrapped type
         template <typename U>
         U& unwrap_exact()
+        {
+            assert_type_exact<U>();
+            return unsafe_unwrap<U>();
+        }
+
+        /// @brief Returns const reference to the value with specified type.
+        ///
+        /// Calls std::terminate if stored type is not equal to the requested type.
+        /// Please use this method only with conjunction with exl::mixed::is_exact() of when type is
+        /// clearly known at the moment of call (e.g. right after explicit construction of
+        /// ext::mixed) In other cases please use indirect access methods.
+        ///
+        /// @tparam U Requested type to unwrap
+        /// @return Const reference to unwrapped type
+        template <typename U>
+        const U& unwrap_exact() const
         {
             assert_type_exact<U>();
             return unsafe_unwrap<U>();
@@ -347,7 +441,7 @@ namespace exl
 
         /// @brief Returns current tag of mixed type. Please use returned value for check against
         /// exl::mixed::tag_of<T>()
-        tag_t tag()
+        tag_t tag() const
         {
             return tag_;
         }
@@ -369,7 +463,7 @@ namespace exl
 
     protected:
         template <typename U>
-        void assert_type()
+        void assert_type() const
         {
             if (!is<U>())
             {
@@ -378,7 +472,7 @@ namespace exl
         }
 
         template <typename U>
-        void assert_type_exact()
+        void assert_type_exact() const
         {
             if (!is_exact<U>())
             {
@@ -483,6 +577,12 @@ namespace exl
         U& unsafe_unwrap()
         {
             return reinterpret_cast<U&>(storage_);
+        }
+
+        template <typename U>
+        const U& unsafe_unwrap() const
+        {
+            return reinterpret_cast<const U&>(storage_);
         }
 
         template <typename U, typename TL, typename Matcher, typename ... Tail>
