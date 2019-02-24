@@ -5,7 +5,7 @@
 
 #include "ClassMock.hpp"
 
-namespace exl { namespace mock
+namespace exl { namespace test
 {
     Tag as_copied_tag(Tag tag)
     {
@@ -132,5 +132,10 @@ namespace exl { namespace mock
     Tag ClassMock::original_tag() const
     {
         return original_tag_;
+    }
+
+    void ClassMock::set_tag(Tag tag)
+    {
+        tag_ = tag;
     }
 }}

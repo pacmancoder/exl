@@ -8,7 +8,7 @@
 #include <map>
 #include <utility>
 
-namespace exl { namespace mock
+namespace exl { namespace test
 {
     using Tag = int;
 
@@ -56,6 +56,8 @@ namespace exl { namespace mock
         Tag tag() const;
 
         Tag original_tag() const;
+
+        void set_tag(Tag tag);
 
         ~ClassMock();
 

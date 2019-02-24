@@ -11,7 +11,7 @@
 #include <utility>
 
 #include <exl/matchers.hpp>
-
+#include <exl/in_place.hpp>
 #include <exl/impl/mixed_storage_operations.hpp>
 
 namespace exl
@@ -20,34 +20,6 @@ namespace exl
     {
         class mixed {};
     }}
-
-    template <typename T>
-    struct in_place_type_t
-    {
-        explicit in_place_type_t() = default;
-    };
-
-    namespace impl
-    {
-        template <typename T>
-        struct is_in_place_type_t
-        {
-            static constexpr bool value() { return false; }
-        };
-
-        template <typename U>
-        struct is_in_place_type_t<in_place_type_t<U>>
-        {
-            static constexpr bool value() { return true; }
-        };
-    }
-
-#if __cpp_variable_templates >= 201304
-
-    template <typename T>
-    constexpr in_place_type_t<T> in_place_type();
-
-#endif
 
     /// @brief Represents tagged union type
     ///
@@ -423,7 +395,7 @@ namespace exl
         /// @tparam Matchers set of matcher object types to perform match
         /// @param matchers set of matcher objects to perform match
         template <typename U, typename ... Matchers>
-        U map(Matchers&& ... matchers)
+        U map(Matchers&& ... matchers) const
         {
             return map_internal<U, type_list_t>(std::forward<Matchers>(matchers)...);
         }
@@ -434,7 +406,7 @@ namespace exl
         /// @tparam Matchers set of matcher object types to perform match
         /// @param matchers set of matcher objects to perform match
         template <typename ... Matchers>
-        void match(Matchers&& ... matchers)
+        void match(Matchers&& ... matchers) const
         {
             return map_internal<void, type_list_t>(std::forward<Matchers>(matchers)...);
         }
@@ -446,6 +418,8 @@ namespace exl
             return tag_;
         }
 
+        /// @brief Returns tag for type U
+        /// @tparam U Type to search tag for
         template <typename U>
         static constexpr tag_t tag_of()
         {
@@ -458,10 +432,10 @@ namespace exl
             destroy();
         }
 
-    protected:
+    private:
         using StorageOperations = impl::mixed_storage_operations<type_list_t, storage_t>;
 
-    protected:
+    private:
         template <typename U>
         void assert_type() const
         {
@@ -589,7 +563,7 @@ namespace exl
         typename std::enable_if<
                 std::is_same<typename Matcher::kind_t, impl::marker::matcher_when>::value,
                 U
-        >::type map_internal(Matcher&& matcher, Tail&& ... tail)
+        >::type map_internal(Matcher&& matcher, Tail&& ... tail) const
         {
             using Target = typename Matcher::target_type_t;
             if (is<Target>())
@@ -621,7 +595,7 @@ namespace exl
                                 impl::type_list<>
                         >::value,
                 U
-        >::type map_internal(Matcher&& matcher)
+        >::type map_internal(Matcher&& matcher) const
         {
             return static_cast<U>(matcher.impl(unsafe_unwrap<typename Matcher::target_type_t>()));
         }
@@ -630,7 +604,7 @@ namespace exl
         typename std::enable_if<
                 std::is_same<typename Matcher::kind_t, impl::marker::matcher_when_exact>::value,
                 U
-        >::type map_internal(Matcher&& matcher, Tail&& ... tail)
+        >::type map_internal(Matcher&& matcher, Tail&& ... tail) const
         {
             using Target = typename Matcher::target_type_t;
             if (is_exact<Target>())
@@ -656,7 +630,7 @@ namespace exl
                                 impl::type_list<>
                         >::value,
                 U
-        >::type map_internal(Matcher&& matcher)
+        >::type map_internal(Matcher&& matcher) const
         {
             return static_cast<U>(matcher.impl(unsafe_unwrap<typename Matcher::target_type_t>()));
         }
@@ -665,7 +639,7 @@ namespace exl
         typename std::enable_if<
                 std::is_same<typename Matcher::kind_t, impl::marker::matcher_otherwise>::value,
                 U
-        >::type map_internal(Matcher&& matcher)
+        >::type map_internal(Matcher&& matcher) const
         {
             return static_cast<U>(matcher.impl());
         }

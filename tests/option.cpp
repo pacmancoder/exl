@@ -7,9 +7,9 @@
 
 #include <exl/option.hpp>
 
-#include "mock/ClassMock.hpp"
+#include "utils/ClassMock.hpp"
 
-using namespace exl::mock;
+using namespace exl::test;
 
 TEST_CASE("Option construction test", "[option]")
 {
