@@ -968,10 +968,3 @@ TEST_CASE("Mixed make test", "[mixed]")
         REQUIRE(m.unwrap<std::string>().empty());
     }
 }
-
-TEST_CASE("Mixed const assignment test", "[option]")
-{
-    const auto option_one = exl::mixed<int, char>::make<int>(1);
-    auto option_two = exl::mixed<int, char>::make<char>(42);
-    option_two = option_one;
-}
