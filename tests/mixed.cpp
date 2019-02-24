@@ -290,7 +290,7 @@ TEST_CASE("Mixed type assignment operators test", "[mixed]")
     {
         SECTION("Copy assign")
         {
-            ClassMock mockForCopy(2, &calls);
+            const ClassMock mockForCopy(2, &calls);
             m1 = mockForCopy;
 
             SECTION("Is not constructed")
@@ -361,11 +361,11 @@ static void generic_test_construct_from_subset()
 
     SECTION("Constructed with subset mixed type")
     {
-        MixedSubset m1(ClassMock(1, &calls));
-        auto m1_tag = m1.template unwrap<ClassMock>().tag();
-
         SECTION("By copy")
         {
+            const MixedSubset m1(ClassMock(1, &calls));
+            auto m1_tag = m1.template unwrap<ClassMock>().tag();
+
             Mixed m2(m1);
 
             SECTION("Is assigned value correct")
@@ -383,6 +383,9 @@ static void generic_test_construct_from_subset()
 
         SECTION("By move")
         {
+            MixedSubset m1(ClassMock(1, &calls));
+            auto m1_tag = m1.template unwrap<ClassMock>().tag();
+
             Mixed m2(std::move(m1));
 
             SECTION("Is assigned value correct")
@@ -472,7 +475,7 @@ static void generic_test_assign_from_subset()
     SECTION("Copy-assigned correctly when variants are different")
     {
         Mixed m1(ClassMock(1, &calls));
-        MixedSubset m2(SecondClassMock(2, &calls));
+        const MixedSubset m2(SecondClassMock(2, &calls));
 
         auto m1_tag = m1.template unwrap<ClassMock>().tag();
         auto m2_tag = m2.template unwrap<SecondClassMock>().tag();
@@ -505,7 +508,7 @@ static void generic_test_assign_from_subset()
     SECTION("Copy-assigned correctly when variants are the same")
     {
         Mixed m1(ClassMock(1, &calls));
-        MixedSubset m2(ClassMock(2, &calls));
+        const MixedSubset m2(ClassMock(2, &calls));
 
         auto m1_tag = m1.template unwrap<ClassMock>().tag();
         auto m2_tag = m2.template unwrap<ClassMock>().tag();

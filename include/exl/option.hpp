@@ -21,7 +21,6 @@ namespace exl
         using base_mixed_t = mixed<T, exl::none>;
 
     public:
-
         /// @brief Forwards construction to exl::mixed. see exl::mixed::mixed
         template <typename ... Args>
         option(Args&& ... args)
