@@ -33,12 +33,12 @@ namespace exl
         };
     }
 
-    constexpr in_place_t in_place();
+    constexpr in_place_t in_place = in_place_t();
 
 #if __cpp_variable_templates >= 201304
 
     template <typename T>
-    constexpr in_place_type_t<T> in_place_type();
+    constexpr in_place_type_t<T> in_place_type = in_place_type_t<T>();
 
 #endif
 }
