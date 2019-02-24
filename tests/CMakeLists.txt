@@ -5,13 +5,14 @@
 
 add_executable(exl-test
         # Utilities
-        mock/ClassMock.cpp
+        utils/ClassMock.cpp
         # Tests
         tests.cpp
         type_list.cpp
         matchers.cpp
         mixed.cpp
         option.cpp
+        box.cpp
 )
 
 target_link_libraries(exl-test PRIVATE exl)
@@ -38,14 +39,14 @@ endif ()
 
 add_test(NAME exl-test COMMAND exl-test)
 
-add_executable(exl-mixed-invalid-unwrap-test mixed_invalid_unwrap_test.cpp)
-target_link_libraries(exl-mixed-invalid-unwrap-test PRIVATE exl)
-target_link_libraries(exl-mixed-invalid-unwrap-test PRIVATE exl-coverage-config)
-add_test(NAME exl-mixed-invalid-unwrap-test COMMAND exl-mixed-invalid-unwrap-test)
-set_tests_properties(exl-mixed-invalid-unwrap-test PROPERTIES WILL_FAIL TRUE)
+function(add_termination_test TEST_NAME TEST_FILE)
+    add_executable(${TEST_NAME} ${TEST_FILE})
+    target_link_libraries(${TEST_NAME} PRIVATE exl)
+    target_link_libraries(${TEST_NAME} PRIVATE exl-coverage-config)
+    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+    set_tests_properties(${TEST_NAME} PROPERTIES WILL_FAIL TRUE)
+endfunction()
 
-add_executable(exl-mixed-invalid-unwrap-exact-test mixed_invalid_unwrap_exact_test.cpp)
-target_link_libraries(exl-mixed-invalid-unwrap-exact-test PRIVATE exl)
-target_link_libraries(exl-mixed-invalid-unwrap-exact-test PRIVATE exl-coverage-config)
-add_test(NAME exl-mixed-invalid-unwrap-exact-test COMMAND exl-mixed-invalid-unwrap-exact-test)
-set_tests_properties(exl-mixed-invalid-unwrap-exact-test PROPERTIES WILL_FAIL TRUE)
+add_termination_test(exl-mixed-invalid-unwrap-test mixed_invalid_unwrap_test.cpp)
+add_termination_test(exl-mixed-invalid-unwrap-exact-test mixed_invalid_unwrap_exact_test.cpp)
+add_termination_test(exl-box-invalid-dereferencing-test box_invalid_dereferencing_test.cpp)

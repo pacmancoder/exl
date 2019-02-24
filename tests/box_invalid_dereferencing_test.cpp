@@ -3,12 +3,17 @@
 // Distributed under the Boost Software License, Version 1.0.
 // (See accompanying file LICENSE or copy at https://www.boost.org/LICENSE_1_0.txt)
 
-#include <exl/mixed.hpp>
+#include <exl/box.hpp>
 
 #include "utils/termination_test.hpp"
+#include "utils/AllocObject.hpp"
+
+using namespace exl::test;
 
 void termination_test()
 {
-    exl::mixed<char, int> m(422);
-    m.unwrap<char>();
+    auto boxed = exl::box<AlwaysBadAllocObject>::make();
+    auto& unwrapped = boxed.get();
+
+    (void) unwrapped;
 }

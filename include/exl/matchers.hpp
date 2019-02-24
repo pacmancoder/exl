@@ -39,6 +39,7 @@ namespace exl
     }
 
 
+    /// @brief Returns matcher for non-strict "is same" comparision
     template <
             typename T,
             typename Func,
@@ -53,6 +54,7 @@ namespace exl
         return Matcher(std::forward<Func>(func));
     }
 
+    /// @brief Returns matcher for strict "is same" comparision
     template <
             typename T,
             typename Func,
@@ -67,6 +69,7 @@ namespace exl
         return Matcher(std::forward<Func>(func));
     }
 
+    /// @brief Returns matcher for covering "else" clause
     template <
             typename Func,
             typename Matcher = impl::matcher<

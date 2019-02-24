@@ -11,10 +11,10 @@
 
 #include <exl/mixed.hpp>
 
-#include "mock/ClassMock.hpp"
+#include "utils/ClassMock.hpp"
 
 using namespace exl::impl;
-using namespace exl::mock;
+using namespace exl::test;
 
 TEST_CASE("Mixed type construction test", "[mixed]")
 {
