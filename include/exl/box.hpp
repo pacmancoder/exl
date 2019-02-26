@@ -9,7 +9,6 @@
 #include <utility>
 
 #include <exl/in_place.hpp>
-#include <arpa/nameser.h>
 
 namespace exl
 {
