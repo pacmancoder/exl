@@ -178,3 +178,206 @@ TEST_CASE("exl::box assignment operator removes old value and assigns new pointe
 
     REQUIRE(!boxed2.is_valid());
 }
+
+namespace
+{
+    void scalar_deleter_stub(int* p)
+    {
+        *p = 42;
+    }
+
+    void array_deleter_stub(int* values)
+    {
+        values[0] = 1;
+        values[1] = 2;
+        values[2] = 3;
+    }
+
+    struct StubStaticDeleterStruct
+    {
+        static void destroy(int* p)
+        {
+            scalar_deleter_stub(p);
+        }
+    };
+}
+
+TEST_CASE("exl::impl::static deleter test")
+{
+    SECTION("Scalar specialization")
+    {
+        exl::impl::static_deleter<int, scalar_deleter_stub> deleter;
+        int value = 0;
+        deleter.destroy(&value);
+        REQUIRE(value == 42);
+    }
+
+    SECTION("Array specialization")
+    {
+        exl::impl::static_deleter<int[], array_deleter_stub> deleter;
+        int values[3] = { 0 };
+        int* values_ptr = values;
+        deleter.destroy(values_ptr);
+        REQUIRE(values[0] == 1);
+        REQUIRE(values[1] == 2);
+        REQUIRE(values[2] == 3);
+    }
+
+    SECTION("When function is static method")
+    {
+        exl::impl::static_deleter<int[], StubStaticDeleterStruct::destroy> deleter;
+        int value = 0;
+        deleter.destroy(&value);
+        REQUIRE(value == 42);
+    }
+}
+
+TEST_CASE("exl::impl_is_static_deleter test")
+{
+    REQUIRE(
+            exl::impl::is_static_deleter<
+                    exl::impl::static_deleter<int[], array_deleter_stub>
+            >::value()
+    );
+    REQUIRE(!exl::impl::is_static_deleter<int>::value());
+}
+
+TEST_CASE("exl::impl::box_impl has size of pointer when deleter is static function")
+{
+    using namespace exl::impl;
+
+    REQUIRE(sizeof(box_impl<int, static_deleter<int, scalar_deleter_stub>>) == sizeof(int*));
+}
+
+namespace
+{
+    class StubDeleter
+    {
+    public:
+        static const int default_value = 399;
+
+    public:
+        StubDeleter()
+                : value_(&default_value) {}
+
+        StubDeleter(StubDeleter&& rhs) noexcept
+                : value_(rhs.value_) {}
+
+        explicit StubDeleter(const int* value)
+                : value_(value) {}
+
+        StubDeleter& operator=(StubDeleter&& rhs) noexcept
+        {
+            value_ = rhs.value_;
+            return *this;
+        }
+
+        void operator()(int* obj)
+        {
+            *obj = *value_;
+        }
+
+    private:
+        const int* value_;
+    };
+}
+
+TEST_CASE("exl::impl_dynamic_deleter_impl test")
+{
+    using namespace exl::impl;
+
+    SECTION("Has minimal size")
+    {
+        REQUIRE(sizeof(dynamic_deleter<int, StubDeleter>) == sizeof(StubDeleter));
+    }
+
+    SECTION("Default constructs")
+    {
+        dynamic_deleter<int, StubDeleter> deleter;
+        int value = 0;
+        deleter.destroy(&value);
+        REQUIRE(value == 399);
+    }
+
+    SECTION("Move constructs")
+    {
+        const int new_value = 42;
+        dynamic_deleter<int, StubDeleter> deleter((StubDeleter(&new_value)));
+        int value = 0;
+        deleter.destroy(&value);
+        REQUIRE(value == new_value);
+    }
+
+    SECTION("Move assigns")
+    {
+        const int new_value = 42;
+        dynamic_deleter<int, StubDeleter> deleter;
+        deleter = StubDeleter(&new_value);
+        int value = 0;
+        deleter.destroy(&value);
+        REQUIRE(value == new_value);
+    }
+}
+
+namespace
+{
+    class FakeDeletionObject
+    {
+    public:
+        static void operator delete[](void* obj)
+        {
+            reinterpret_cast<FakeDeletionObject*>(obj)[0].tag = 42;
+            reinterpret_cast<FakeDeletionObject*>(obj)[1].tag = 43;
+            reinterpret_cast<FakeDeletionObject*>(obj)[2].tag = 44;
+        }
+
+        static void operator delete(void* obj)
+        {
+            reinterpret_cast<FakeDeletionObject*>(obj)->tag = 42;
+        }
+
+        int tag = 0;
+    };
+}
+
+TEST_CASE("exl::impl::box_impl test")
+{
+    using namespace exl::impl;
+
+    SECTION("RAII enforced with  default deleter for scalars")
+    {
+        FakeDeletionObject obj;
+        {
+            box_impl<FakeDeletionObject> i(&obj);
+        }
+        REQUIRE(obj.tag == 42);
+    }
+
+    SECTION("RAII enforced with default deleter for arrays")
+    {
+        FakeDeletionObject objs[3];
+        FakeDeletionObject* objs_ptr = objs;
+
+        objs[0].tag = 1;
+        objs[1].tag = 2;
+        objs[2].tag = 3;
+
+        {
+            box_impl<FakeDeletionObject[]> i(objs_ptr);
+        }
+
+        REQUIRE(objs[0].tag == 42);
+        REQUIRE(objs[1].tag == 43);
+        REQUIRE(objs[2].tag == 44);
+    }
+}
+
+/* TODO:
+ * - box_impl with custom static deleter
+ * - box_impl with dynamic deleter
+ * - box_impl create/move/assign
+ *     - to scalar
+ *     - to array
+ *     - to subset with deleted for based type
+ * - static sized arrays!
+ */

@@ -9,9 +9,170 @@
 #include <utility>
 
 #include <exl/in_place.hpp>
+#include <arpa/nameser.h>
 
 namespace exl
 {
+    namespace impl
+    {
+        template <typename T>
+        struct get_deleter_func_type
+        {
+            using type = void (&)(T*);
+        };
+
+        template <typename T>
+        struct get_deleter_func_type<T[]>
+        {
+            using type = void (&)(T*);
+        };
+
+
+        template <
+                typename T,
+                typename get_deleter_func_type<T>::type DeleterFunc
+        >
+        class static_deleter
+        {
+        public:
+            using ptr_t = typename std::conditional<
+                    std::is_array<T>::value,
+                    typename std::decay<T>::type,
+                    typename std::add_pointer<typename std::decay<T>::type>::type
+            >::type;
+
+        public:
+            static void destroy(ptr_t obj)
+            {
+                DeleterFunc(obj);
+            }
+        };
+
+        template <typename T>
+        void default_delete_scalar(T* p) { delete p; }
+
+        template <typename T>
+        void default_delete_array(T* p) { delete[] p; }
+
+        template <typename T>
+        struct get_default_deleter
+        {
+            using type = static_deleter<T, default_delete_scalar<T>>;
+        };
+
+        template <typename U>
+        struct get_default_deleter<U[]>
+        {
+            using type = static_deleter<U[], default_delete_array<U>>;
+        };
+
+        template <typename Deleter>
+        struct is_static_deleter
+        {
+            static constexpr bool value()
+            {
+                return false;
+            }
+        };
+
+        template <typename T, typename get_deleter_func_type<T>::type DeleterFunc>
+        struct is_static_deleter<static_deleter<T, DeleterFunc>>
+        {
+            static constexpr bool value()
+            {
+                return true;
+            }
+        };
+
+        template <typename T, typename Deleter>
+        class dynamic_deleter
+        {
+        public:
+            using ptr_t = typename std::conditional<
+                    std::is_array<T>::value,
+                    typename std::decay<T>::type,
+                    typename std::add_pointer<typename std::decay<T>::type>::type
+            >::type;
+
+        public:
+            template <
+                    typename = typename std::enable_if<
+                            std::is_default_constructible<Deleter>::value
+                    >::type
+            >
+            dynamic_deleter()
+                    : deleter_() {}
+
+            template <
+                    typename RhsDeleter,
+                    typename = typename std::enable_if<
+                            std::is_convertible<
+                                    RhsDeleter,
+                                    Deleter
+                            >::value
+                    >::type
+            >
+            explicit dynamic_deleter(RhsDeleter&& rhs_deleter_)
+                    : deleter_(std::forward<RhsDeleter>(rhs_deleter_)) {}
+
+            template <
+                    typename RhsDeleter,
+                    typename = typename std::enable_if<
+                            std::is_convertible<
+                                    RhsDeleter,
+                                    Deleter
+                            >::value
+                    >::type
+            >
+            dynamic_deleter& operator=(RhsDeleter&& rhs_deleter_)
+            {
+                deleter_ = std::forward<RhsDeleter>(rhs_deleter_);
+                return *this;
+            }
+
+            void destroy(ptr_t obj)
+            {
+                deleter_(obj);
+            }
+
+        private:
+            Deleter deleter_;
+        };
+
+        template <typename T, typename Deleter = typename get_default_deleter<T>::type>
+        class box_impl : public Deleter
+        {
+        public:
+            using ptr_t = typename Deleter::ptr_t;
+
+        public:
+
+            template <
+                    typename = typename std::enable_if<
+                            std::is_default_constructible<Deleter>::value
+                    >::type
+            >
+            explicit box_impl(ptr_t ptr)
+                    : Deleter()
+                    , ptr_(ptr) {}
+
+            template <typename RhsDeleter>
+            explicit box_impl(ptr_t ptr, RhsDeleter&& rhs_deleter)
+                    : Deleter(std::forward<RhsDeleter>(rhs_deleter))
+                    , ptr_(ptr) {}
+
+            ~box_impl()
+            {
+                if (ptr_ != nullptr)
+                {
+                    Deleter::destroy(ptr_);
+                }
+            }
+
+        private:
+            ptr_t ptr_;
+        };
+    }
     /// @brief Represents type which provides exception-less dynamic allocation mechanism
     /// result of allocation can be checked with is_valid method
     template <typename T>
@@ -26,38 +187,38 @@ namespace exl
         /// @param args object constructor arguments
         /// @return boxed object
         template <typename ... Args>
-        static box<T> make(Args&& ... args)
+        static box make(Args&& ... args)
         {
             return box(in_place, std::forward<Args>(args)...);
         }
 
-        static box<T> from_ptr(T* ptr) noexcept
+        static box from_ptr(T* ptr) noexcept
         {
             return box(ptr);
         }
 
         /// @brief Copy construction is not permitted
-        box(const box<T>&) = delete;
+        box(const box&) = delete;
 
         /// @brief Copy assignment is not permitted
-        box<T>& operator=(const box<T>&) = delete;
+        box& operator=(const box&) = delete;
 
         /// @brief Constructs box by moving rhs
         /// @param rhs Source object to move from
-        box(box<T>&& rhs) noexcept
+        box(box&& rhs) noexcept
                 : obj_(rhs.obj_)
         {
             rhs.obj_ = nullptr;
         }
 
         /// @brief Swaps two boxes
-        void swap(box<T>& rhs) noexcept
+        void swap(box& rhs) noexcept
         {
             std::swap(obj_, rhs.obj_);
         }
 
         /// @brief Assigns new value to box, destroying previously contained value
-        box<T>& operator=(box<T>&& rhs)
+        box& operator=(box&& rhs)
         {
             reset(nullptr);
             swap(rhs);
@@ -148,7 +309,7 @@ namespace exl
         {
             if (is_valid())
             {
-                obj_->~T();
+                delete obj_;
             }
         }
 
