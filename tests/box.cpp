@@ -254,11 +254,8 @@ namespace
     class StubDeleter
     {
     public:
-        static const int default_value = 399;
-
-    public:
         StubDeleter()
-                : value_(&default_value) {}
+                : value_(nullptr) {}
 
         StubDeleter(StubDeleter&& rhs) noexcept
                 : value_(rhs.value_) {}
@@ -274,6 +271,11 @@ namespace
 
         void operator()(int* obj)
         {
+            if (!value_)
+            {
+                *obj = 399;
+                return;
+            }
             *obj = *value_;
         }
 
