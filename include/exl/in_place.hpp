@@ -7,11 +7,13 @@
 
 namespace exl
 {
+    /// @brief In place construction marker type. Usually used in conjunction with constructors.
     struct in_place_t
     {
         explicit in_place_t() = default;
     };
 
+    /// @brief In place construction marker type. Usually used in conjunction with constructors.
     template <typename T>
     struct in_place_type_t
     {
@@ -20,6 +22,7 @@ namespace exl
 
     namespace impl
     {
+        /// @brief Checks if provided type T is in_place_type_t
         template <typename T>
         struct is_in_place_type_t
         {
@@ -33,10 +36,12 @@ namespace exl
         };
     }
 
+    /// @brief In place construction marker. Usually used in conjunction with constructors
     constexpr in_place_t in_place = in_place_t();
 
 #if __cpp_variable_templates >= 201304
 
+    /// @brief In place construction marker. Usually used in conjunction with constructors
     template <typename T>
     constexpr in_place_type_t<T> in_place_type = in_place_type_t<T>();
 

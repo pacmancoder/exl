@@ -15,7 +15,14 @@ namespace exl { namespace test
             return reinterpret_cast<void*>(1);
         }
 
+        static void* operator new(size_t)
+        {
+            return new(std::nothrow) AlwaysGoodAllocObject();
+        }
+
         static void operator delete(void*, std::nothrow_t) noexcept {}
+
+        static void operator delete(void*) {}
     };
 
     class AlwaysBadAllocObject
@@ -26,6 +33,13 @@ namespace exl { namespace test
             return reinterpret_cast<void*>(0);
         }
 
+        static void* operator new(size_t)
+        {
+            return new(std::nothrow) AlwaysBadAllocObject();
+        }
+
         static void operator delete(void*, std::nothrow_t) noexcept {}
+
+        static void operator delete(void*) {}
     };
 }}
