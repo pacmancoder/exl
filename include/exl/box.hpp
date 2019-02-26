@@ -146,7 +146,6 @@ namespace exl
             using ptr_t = typename Deleter::ptr_t;
 
         public:
-
             template <
                     typename = typename std::enable_if<
                             std::is_default_constructible<Deleter>::value
