@@ -5,16 +5,34 @@ EXL ‒ Exceptionless template library
 [![Coverage](https://codecov.io/gh/pacmancoder/exl/branch/master/graph/badge.svg)](https://codecov.io/gh/pacmancoder/exl)
 [![CodeFactor](https://www.codefactor.io/repository/github/pacmancoder/exl/badge)](https://www.codefactor.io/repository/github/pacmancoder/exl)
 
-Exl library provides rich data manipulation abstractions without involving exceptions for its work.
-#### Main Features
+<p align="center">
+    <img src="assets/img/logo_480.png"/>
+</p>
+
+### About
+This template library provides set of types which will enforce to handle errors
+explicitly without involving any kind of exceptions at all. Constructed with focus
+on early error detection - a lot of errors will be detected during compilation. Client
+code is encouraged to be safe - there is a plenty of safe data manipulation tools
+like data mapping and matchers which are move powerfull than direct data access methods.
+If code triggers invalid action - programm will terminate. There is no undefined behavior.
+
+
+### Main Features
 - Fast - Built with runtime efficiency in mind.
-- Strict - Will detect and force to avoid many errors before runtime.
+- Strict - Will detect and enforce to avoid many errors even before runtime.
 - Compact - No third-party dependencies. Only STL is required.
 - Modern - Written mostly in C++11 standard.
 - Lightweight - No implicit heap allocations, small footprint.
 - Reliable - Full test coverage
+- Straightforward - No undefined behavior. If it fails then it crashes.
 
-### exl::mixed - std::variant on steroids
+### Components
+- exl::mixed - std::variant on steroids
+- exl::option - handle optional data like a boss
+- exl::box - more verbose and flexible std::varinat substitution
+
+### Showcase: exl::mixed
 ```cpp
 // Error hierarchy
 class Error { /* ... */ };
