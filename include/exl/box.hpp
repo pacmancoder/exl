@@ -23,7 +23,7 @@ namespace exl
         template <typename T>
         struct get_deleter_func_type<T[]>
         {
-            using type = void (&)(T*);
+            using type = void (&)(T[]);
         };
 
 
@@ -87,11 +87,16 @@ namespace exl
         class dynamic_deleter
         {
         public:
+            template <typename FT, typename FDeleter>
+            friend class dynamic_deleter;
+
             using ptr_t = typename std::conditional<
                     std::is_array<T>::value,
                     typename std::decay<T>::type,
                     typename std::add_pointer<typename std::decay<T>::type>::type
             >::type;
+
+            using deleter_t = Deleter;
 
         public:
             template <
@@ -103,30 +108,49 @@ namespace exl
                     : deleter_() {}
 
             template <
-                    typename RhsDeleter,
+                    typename RhsDeleterImpl,
                     typename = typename std::enable_if<
                             std::is_convertible<
-                                    RhsDeleter,
-                                    Deleter
+                                    typename std::decay<RhsDeleterImpl>::type*,
+                                    deleter_t*
                             >::value
                     >::type
             >
-            explicit dynamic_deleter(RhsDeleter&& rhs_deleter_)
-                    : deleter_(std::forward<RhsDeleter>(rhs_deleter_)) {}
+            explicit dynamic_deleter(RhsDeleterImpl&& rhs)
+                    : deleter_(std::forward<RhsDeleterImpl>(rhs)) {}
+
+            template <
+                    typename U,
+                    typename RhsDeleterImpl,
+                    typename = typename std::enable_if<
+                            std::is_convertible<
+                                    typename std::decay<RhsDeleterImpl>::type*,
+                                    deleter_t*
+                            >::value
+                    >::type,
+                    typename = typename std::enable_if<std::is_convertible<U*, T*>::value>::type
+            >
+            explicit dynamic_deleter(dynamic_deleter<U, RhsDeleterImpl>&& rhs)
+                    : deleter_(std::move(rhs.deleter_)) {}
 
             template <
                     typename RhsDeleter,
                     typename = typename std::enable_if<
                             std::is_convertible<
-                                    RhsDeleter,
-                                    Deleter
+                                    typename RhsDeleter::deleter_t*,
+                                    deleter_t*
                             >::value
                     >::type
             >
-            dynamic_deleter& operator=(RhsDeleter&& rhs_deleter_)
+            dynamic_deleter& operator=(RhsDeleter&& rhs)
             {
-                deleter_ = std::forward<RhsDeleter>(rhs_deleter_);
+                deleter_ = std::move(rhs.deleter_);
                 return *this;
+            }
+
+            Deleter& get_deleter() const
+            {
+                return deleter_;
             }
 
             void destroy(ptr_t obj)
@@ -164,6 +188,7 @@ namespace exl
                 if (ptr_ != nullptr)
                 {
                     Deleter::destroy(ptr_);
+                    ptr_ = nullptr;
                 }
             }
 
