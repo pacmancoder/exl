@@ -1,12 +1,12 @@
 EXL ‒ Exceptionless template library
 ====================================
-[![Build Status](https://travis-ci.org/pacmancoder/exl.svg?branch=master)](https://travis-ci.org/pacmancoder/exl)
-[![Build status](https://ci.appveyor.com/api/projects/status/6072tjhi3js0tp9a/branch/master?svg=true)](https://ci.appveyor.com/project/pacmancoder/exl/branch/master)
-[![Coverage](https://codecov.io/gh/pacmancoder/exl/branch/master/graph/badge.svg)](https://codecov.io/gh/pacmancoder/exl)
-[![CodeFactor](https://www.codefactor.io/repository/github/pacmancoder/exl/badge)](https://www.codefactor.io/repository/github/pacmancoder/exl)
-
 <p align="center">
     <img src="assets/img/logo_480.png"/>
+    <br><br>
+    <a href="https://travis-ci.org/pacmancoder/exl"><img src="https://travis-ci.org/pacmancoder/exl.svg?branch=master"/></a>
+    <a href="https://ci.appveyor.com/project/pacmancoder/exl/branch/master"><img src="https://ci.appveyor.com/api/projects/status/6072tjhi3js0tp9a/branch/master?svg=true"/></a>
+    <a href="https://codecov.io/gh/pacmancoder/exl"><img src="https://codecov.io/gh/pacmancoder/exl/branch/master/graph/badge.svg"/></a>
+    <a href="https://www.codefactor.io/repository/github/pacmancoder/exl"><img src="https://www.codefactor.io/repository/github/pacmancoder/exl/badge"/></a>
 </p>
 
 ### About
