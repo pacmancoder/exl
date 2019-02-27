@@ -1,5 +1,4 @@
-EXL ‒ Exceptionless template library
-====================================
+
 <p align="center">
     <img src="assets/img/logo_480.png"/>
     <br><br>
@@ -9,7 +8,7 @@ EXL ‒ Exceptionless template library
     <a href="https://www.codefactor.io/repository/github/pacmancoder/exl"><img src="https://www.codefactor.io/repository/github/pacmancoder/exl/badge"/></a>
 </p>
 
-### About
+### EXL ‒ Exceptionless template library
 This template library provides set of types which will enforce to handle errors
 explicitly without involving any kind of exceptions at all. Constructed with focus
 on early error detection - a lot of errors will be detected during compilation. Client
