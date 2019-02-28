@@ -15,23 +15,23 @@ namespace exl
     namespace impl
     {
         template <typename T>
-        struct get_deleter_func_type
+        struct get_deleter_function_type
         {
             using type = void (&)(T*);
         };
 
         template <typename T>
-        struct get_deleter_func_type<T[]>
+        struct get_deleter_function_type<T[]>
         {
-            using type = void (&)(T[]);
+            using type = void (&)(T*);
         };
 
 
         template <
                 typename T,
-                typename get_deleter_func_type<T>::type DeleterFunc
+                typename get_deleter_function_type<T>::type DeleterFunc
         >
-        class static_deleter
+        class deleter_function
         {
         public:
             using ptr_t = typename std::conditional<
@@ -41,6 +41,25 @@ namespace exl
             >::type;
 
         public:
+            deleter_function() = default;
+
+            template <
+                    typename U,
+                    typename get_deleter_function_type<U>::type UDeleterFunc,
+                    typename = typename std::enable_if<std::is_convertible<U*, T*>::value>::type
+            >
+            deleter_function(deleter_function<U, UDeleterFunc>&&) {}
+
+            template <
+                    typename U,
+                    typename get_deleter_function_type<U>::type UDeleterFunc,
+                    typename = typename std::enable_if<std::is_convertible<U*, T*>::value>::type
+            >
+            deleter_function& operator=(deleter_function<U, UDeleterFunc>&&) noexcept
+            {
+                return *this;
+            }
+
             static void destroy(ptr_t obj)
             {
                 DeleterFunc(obj);
@@ -54,19 +73,19 @@ namespace exl
         void default_delete_array(T* p) { delete[] p; }
 
         template <typename T>
-        struct get_default_deleter
+        struct get_default_deleter_function
         {
-            using type = static_deleter<T, default_delete_scalar<T>>;
+            using type = deleter_function<T, default_delete_scalar<T>>;
         };
 
         template <typename U>
-        struct get_default_deleter<U[]>
+        struct get_default_deleter_function<U[]>
         {
-            using type = static_deleter<U[], default_delete_array<U>>;
+            using type = deleter_function<U[], default_delete_array<U>>;
         };
 
         template <typename Deleter>
-        struct is_static_deleter
+        struct is_deleter_function
         {
             static constexpr bool value()
             {
@@ -74,8 +93,8 @@ namespace exl
             }
         };
 
-        template <typename T, typename get_deleter_func_type<T>::type DeleterFunc>
-        struct is_static_deleter<static_deleter<T, DeleterFunc>>
+        template <typename T, typename get_deleter_function_type<T>::type DeleterFunc>
+        struct is_deleter_function<deleter_function<T, DeleterFunc>>
         {
             static constexpr bool value()
             {
@@ -84,11 +103,12 @@ namespace exl
         };
 
         template <typename T, typename Deleter>
-        class dynamic_deleter
+        class deleter_object
         {
         public:
             template <typename FT, typename FDeleter>
-            friend class dynamic_deleter;
+            friend
+            class deleter_object;
 
             using ptr_t = typename std::conditional<
                     std::is_array<T>::value,
@@ -104,7 +124,7 @@ namespace exl
                             std::is_default_constructible<Deleter>::value
                     >::type
             >
-            dynamic_deleter()
+            deleter_object()
                     : deleter_() {}
 
             template <
@@ -116,7 +136,7 @@ namespace exl
                             >::value
                     >::type
             >
-            explicit dynamic_deleter(RhsDeleterImpl&& rhs)
+            explicit deleter_object(RhsDeleterImpl&& rhs)
                     : deleter_(std::forward<RhsDeleterImpl>(rhs)) {}
 
             template <
@@ -130,7 +150,7 @@ namespace exl
                     >::type,
                     typename = typename std::enable_if<std::is_convertible<U*, T*>::value>::type
             >
-            explicit dynamic_deleter(dynamic_deleter<U, RhsDeleterImpl>&& rhs)
+            explicit deleter_object(deleter_object<U, RhsDeleterImpl>&& rhs)
                     : deleter_(std::move(rhs.deleter_)) {}
 
             template <
@@ -142,15 +162,21 @@ namespace exl
                             >::value
                     >::type
             >
-            dynamic_deleter& operator=(RhsDeleter&& rhs)
+            deleter_object& operator=(RhsDeleter&& rhs)
             {
                 deleter_ = std::move(rhs.deleter_);
                 return *this;
             }
 
-            Deleter& get_deleter() const
+            Deleter& get_deleter()
             {
                 return deleter_;
+            }
+
+            template <typename RhsDeleter>
+            void set_deleter(RhsDeleter&& deleter)
+            {
+                deleter_ = std::forward<RhsDeleter>(deleter);
             }
 
             void destroy(ptr_t obj)
@@ -162,10 +188,14 @@ namespace exl
             Deleter deleter_;
         };
 
-        template <typename T, typename Deleter = typename get_default_deleter<T>::type>
+        template <typename T, typename Deleter = typename get_default_deleter_function<T>::type>
         class box_impl : public Deleter
         {
         public:
+            template <typename FT, typename FDeleter>
+            friend
+            class box_impl;
+
             using ptr_t = typename Deleter::ptr_t;
 
         public:
@@ -178,12 +208,38 @@ namespace exl
                     : Deleter()
                     , ptr_(ptr) {}
 
+            template <typename U, typename RhsDeleter>
+            explicit box_impl(box_impl<U, RhsDeleter>&& rhs) noexcept
+                    : Deleter(std::move(rhs))
+                    , ptr_(rhs.ptr_)
+            {
+                rhs.ptr_ = nullptr;
+            }
+
             template <typename RhsDeleter>
             explicit box_impl(ptr_t ptr, RhsDeleter&& rhs_deleter)
                     : Deleter(std::forward<RhsDeleter>(rhs_deleter))
                     , ptr_(ptr) {}
 
+            template <typename U, typename RhsDeleter>
+            box_impl& operator=(box_impl<U, RhsDeleter>&& rhs) noexcept
+            {
+                destroy_with_deleter();
+                Deleter::operator=(std::move(rhs));
+
+                ptr_ = rhs.ptr_;
+                rhs.ptr_ = nullptr;
+
+                return *this;
+            }
+
             ~box_impl()
+            {
+                destroy_with_deleter();
+            }
+
+        private:
+            void destroy_with_deleter()
             {
                 if (ptr_ != nullptr)
                 {
