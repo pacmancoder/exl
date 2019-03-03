@@ -25,83 +25,67 @@ namespace exl
         {
             using type = void (&)(T*);
         };
+    }
 
+    template <
+            typename T,
+            typename impl::get_deleter_function_type<T>::type DeleterFunc
+    >
+    class deleter_function
+    {
+    public:
+        using ptr_t = typename std::conditional<
+                std::is_array<T>::value,
+                typename std::decay<T>::type,
+                typename std::add_pointer<typename std::decay<T>::type>::type
+        >::type;
+
+    public:
+        deleter_function() = default;
 
         template <
-                typename T,
-                typename get_deleter_function_type<T>::type DeleterFunc
+                typename U,
+                typename impl::get_deleter_function_type<U>::type UDeleterFunc,
+                typename = typename std::enable_if<
+                        std::is_convertible<
+                                typename std::conditional<
+                                        std::is_array<U>::value,
+                                        typename std::decay<U>::type,
+                                        typename std::add_pointer<U>::type
+                                >::type,
+                                ptr_t
+                        >::value
+                >::type
         >
-        class deleter_function
+        deleter_function(deleter_function<U, UDeleterFunc>&&) {}
+
+        template <
+                typename U,
+                typename impl::get_deleter_function_type<U>::type UDeleterFunc,
+                typename = typename std::enable_if<
+                        std::is_convertible<
+                                typename std::conditional<
+                                        std::is_array<U>::value,
+                                        typename std::decay<U>::type,
+                                        typename std::add_pointer<U>::type
+                                >::type,
+                                ptr_t
+                        >::value
+                >::type
+        >
+        deleter_function& operator=(deleter_function<U, UDeleterFunc>&&) noexcept
         {
-        public:
-            using ptr_t = typename std::conditional<
-                    std::is_array<T>::value,
-                    typename std::decay<T>::type,
-                    typename std::add_pointer<typename std::decay<T>::type>::type
-            >::type;
+            return *this;
+        }
 
-        public:
-            deleter_function() = default;
-
-            template <
-                    typename U,
-                    typename get_deleter_function_type<U>::type UDeleterFunc,
-                    typename = typename std::enable_if<
-                            std::is_convertible<
-                                    typename std::conditional<
-                                            std::is_array<U>::value,
-                                            typename std::decay<U>::type,
-                                            typename std::add_pointer<U>::type
-                                    >::type,
-                                    ptr_t
-                            >::value
-                    >::type
-            >
-            deleter_function(deleter_function<U, UDeleterFunc>&&) {}
-
-            template <
-                    typename U,
-                    typename get_deleter_function_type<U>::type UDeleterFunc,
-                    typename = typename std::enable_if<
-                            std::is_convertible<
-                                    typename std::conditional<
-                                            std::is_array<U>::value,
-                                            typename std::decay<U>::type,
-                                            typename std::add_pointer<U>::type
-                                    >::type,
-                                    ptr_t
-                            >::value
-                    >::type
-            >
-            deleter_function& operator=(deleter_function<U, UDeleterFunc>&&) noexcept
-            {
-                return *this;
-            }
-
-            static void destroy(ptr_t obj)
-            {
-                DeleterFunc(obj);
-            }
-        };
-
-        template <typename T>
-        void default_delete_scalar(T* p) { delete p; }
-
-        template <typename T>
-        void default_delete_array(T* p) { delete[] p; }
-
-        template <typename T>
-        struct get_default_deleter_function
+        static void destroy(ptr_t obj)
         {
-            using type = deleter_function<T, default_delete_scalar<T>>;
-        };
+            DeleterFunc(obj);
+        }
+    };
 
-        template <typename U>
-        struct get_default_deleter_function<U[]>
-        {
-            using type = deleter_function<U[], default_delete_array<U>>;
-        };
-
+    namespace impl
+    {
         template <typename Deleter>
         struct is_deleter_function
         {
@@ -120,112 +104,133 @@ namespace exl
             }
         };
 
-        template <typename T, typename Deleter>
-        class deleter_object
+        template <typename T>
+        void default_delete_scalar(T* p) { delete p; }
+
+        template <typename T>
+        void default_delete_array(T* p) { delete[] p; }
+    }
+
+    template <typename T>
+    struct get_default_deleter_function
+    {
+        using type = deleter_function<T, impl::default_delete_scalar<T>>;
+    };
+
+    template <typename U>
+    struct get_default_deleter_function<U[]>
+    {
+        using type = deleter_function<U[], impl::default_delete_array<U>>;
+    };
+
+    template <typename T, typename Deleter>
+    class deleter_object
+    {
+    public:
+        template <typename FT, typename FDeleter>
+        friend
+        class deleter_object;
+
+        using ptr_t = typename std::conditional<
+                std::is_array<T>::value,
+                typename std::decay<T>::type,
+                typename std::add_pointer<typename std::decay<T>::type>::type
+        >::type;
+
+        using deleter_t = Deleter;
+
+    public:
+        template <
+                typename = typename std::enable_if<
+                        std::is_default_constructible<Deleter>::value
+                >::type
+        >
+        deleter_object()
+                : deleter_() {}
+
+        template <
+                typename RhsDeleterImpl,
+                typename = typename std::enable_if<
+                        std::is_convertible<
+                                typename std::decay<RhsDeleterImpl>::type*,
+                                deleter_t*
+                        >::value
+                >::type
+        >
+        explicit deleter_object(RhsDeleterImpl&& rhs)
+                : deleter_(std::forward<RhsDeleterImpl>(rhs)) {}
+
+        template <
+                typename U,
+                typename RhsDeleterImpl,
+                typename = typename std::enable_if<
+                        std::is_convertible<
+                                RhsDeleterImpl*,
+                                deleter_t*
+                        >::value
+                >::type,
+                typename = typename std::enable_if<
+                        std::is_convertible<
+                                typename std::conditional<
+                                        std::is_array<U>::value,
+                                        typename std::decay<U>::type,
+                                        typename std::add_pointer<U>::type
+                                >::type,
+                                ptr_t
+                        >::value
+                >::type
+        >
+        explicit deleter_object(deleter_object<U, RhsDeleterImpl>&& rhs)
+                : deleter_(std::move(rhs.deleter_)) {}
+
+        template <
+                typename U,
+                typename RhsDeleterImpl,
+                typename = typename std::enable_if<
+                        std::is_convertible<
+                                RhsDeleterImpl*,
+                                deleter_t*
+                        >::value
+                >::type,
+                typename = typename std::enable_if<
+                        std::is_convertible<
+                                typename std::conditional<
+                                        std::is_array<U>::value,
+                                        typename std::decay<U>::type,
+                                        typename std::add_pointer<U>::type
+                                >::type,
+                                ptr_t
+                        >::value
+                >::type
+        >
+        deleter_object& operator=(deleter_object<U, RhsDeleterImpl>&& rhs)
         {
-        public:
-            template <typename FT, typename FDeleter>
-            friend
-            class deleter_object;
+            deleter_ = std::move(rhs.deleter_);
+            return *this;
+        }
 
-            using ptr_t = typename std::conditional<
-                    std::is_array<T>::value,
-                    typename std::decay<T>::type,
-                    typename std::add_pointer<typename std::decay<T>::type>::type
-            >::type;
+        Deleter& get_deleter()
+        {
+            return deleter_;
+        }
 
-            using deleter_t = Deleter;
+        template <typename RhsDeleterImpl>
+        void set_deleter(RhsDeleterImpl&& deleter)
+        {
+            deleter_ = std::forward<RhsDeleterImpl>(deleter);
+        }
 
-        public:
-            template <
-                    typename = typename std::enable_if<
-                            std::is_default_constructible<Deleter>::value
-                    >::type
-            >
-            deleter_object()
-                    : deleter_() {}
+        void destroy(ptr_t obj)
+        {
+            deleter_(obj);
+        }
 
-            template <
-                    typename RhsDeleterImpl,
-                    typename = typename std::enable_if<
-                            std::is_convertible<
-                                    typename std::decay<RhsDeleterImpl>::type*,
-                                    deleter_t*
-                            >::value
-                    >::type
-            >
-            explicit deleter_object(RhsDeleterImpl&& rhs)
-                    : deleter_(std::forward<RhsDeleterImpl>(rhs)) {}
+    private:
+        Deleter deleter_;
+    };
 
-            template <
-                    typename U,
-                    typename RhsDeleterImpl,
-                    typename = typename std::enable_if<
-                            std::is_convertible<
-                                    RhsDeleterImpl*,
-                                    deleter_t*
-                            >::value
-                    >::type,
-                    typename = typename std::enable_if<
-                            std::is_convertible<
-                                    typename std::conditional<
-                                            std::is_array<U>::value,
-                                            typename std::decay<U>::type,
-                                            typename std::add_pointer<U>::type
-                                    >::type,
-                                    ptr_t
-                            >::value
-                    >::type
-            >
-            explicit deleter_object(deleter_object<U, RhsDeleterImpl>&& rhs)
-                    : deleter_(std::move(rhs.deleter_)) {}
-
-            template <
-                    typename U,
-                    typename RhsDeleterImpl,
-                    typename = typename std::enable_if<
-                            std::is_convertible<
-                                    RhsDeleterImpl*,
-                                    deleter_t*
-                            >::value
-                    >::type,
-                    typename = typename std::enable_if<
-                            std::is_convertible<
-                                    typename std::conditional<
-                                            std::is_array<U>::value,
-                                            typename std::decay<U>::type,
-                                            typename std::add_pointer<U>::type
-                                    >::type,
-                                    ptr_t
-                            >::value
-                    >::type
-            >
-            deleter_object& operator=(deleter_object<U, RhsDeleterImpl>&& rhs)
-            {
-                deleter_ = std::move(rhs.deleter_);
-                return *this;
-            }
-
-            Deleter& get_deleter()
-            {
-                return deleter_;
-            }
-
-            template <typename RhsDeleterImpl>
-            void set_deleter(RhsDeleterImpl&& deleter)
-            {
-                deleter_ = std::forward<RhsDeleterImpl>(deleter);
-            }
-
-            void destroy(ptr_t obj)
-            {
-                deleter_(obj);
-            }
-
-        private:
-            Deleter deleter_;
-        };
-
+    namespace impl
+    {
         template <typename T, typename Deleter = typename get_default_deleter_function<T>::type>
         class box_impl : public Deleter
         {
