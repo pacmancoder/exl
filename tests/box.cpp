@@ -561,19 +561,6 @@ TEST_CASE("exl::impl::boxed_impl can be assigned with compatible function delete
     REQUIRE(derived_value.base_tag == 1);
 }
 
-TEST_CASE("exl::deleter_object can be obtained and changed")
-{
-    auto boxed = exl::impl::box_impl<
-            StubBaseClass,
-            exl::deleter_object<StubBaseClass, DeleterWithTag>
-    >(new StubBaseClass, DeleterWithTag(42));
-
-    REQUIRE(boxed.get_deleter().tag == 42);
-
-    boxed.set_deleter(DeleterWithTag(399));
-    REQUIRE(boxed.get_deleter().tag == 399);
-}
-
 TEST_CASE("exl::impl::box_impl can be constructed with convertible dynamic deleter")
 {
     StubDerivedClass derived;
@@ -717,3 +704,10 @@ TEST_CASE("exl::impl::box_impl can be assigned with convertible array dynamic de
     REQUIRE(value[0].base_tag == 1);
     REQUIRE(value[1].base_tag == 0);
 }
+
+// TODO:
+//   - box_impl::swap
+//   - box_impl::reset
+//   - box_impl::release
+//   - cover exl::box with tests
+//   - reorganize/refactor tests
