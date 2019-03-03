@@ -46,14 +46,32 @@ namespace exl
             template <
                     typename U,
                     typename get_deleter_function_type<U>::type UDeleterFunc,
-                    typename = typename std::enable_if<std::is_convertible<U*, T*>::value>::type
+                    typename = typename std::enable_if<
+                            std::is_convertible<
+                                    typename std::conditional<
+                                            std::is_array<U>::value,
+                                            typename std::decay<U>::type,
+                                            typename std::add_pointer<U>::type
+                                    >::type,
+                                    ptr_t
+                            >::value
+                    >::type
             >
             deleter_function(deleter_function<U, UDeleterFunc>&&) {}
 
             template <
                     typename U,
                     typename get_deleter_function_type<U>::type UDeleterFunc,
-                    typename = typename std::enable_if<std::is_convertible<U*, T*>::value>::type
+                    typename = typename std::enable_if<
+                            std::is_convertible<
+                                    typename std::conditional<
+                                            std::is_array<U>::value,
+                                            typename std::decay<U>::type,
+                                            typename std::add_pointer<U>::type
+                                    >::type,
+                                    ptr_t
+                            >::value
+                    >::type
             >
             deleter_function& operator=(deleter_function<U, UDeleterFunc>&&) noexcept
             {
@@ -144,25 +162,45 @@ namespace exl
                     typename RhsDeleterImpl,
                     typename = typename std::enable_if<
                             std::is_convertible<
-                                    typename std::decay<RhsDeleterImpl>::type*,
+                                    RhsDeleterImpl*,
                                     deleter_t*
                             >::value
                     >::type,
-                    typename = typename std::enable_if<std::is_convertible<U*, T*>::value>::type
+                    typename = typename std::enable_if<
+                            std::is_convertible<
+                                    typename std::conditional<
+                                            std::is_array<U>::value,
+                                            typename std::decay<U>::type,
+                                            typename std::add_pointer<U>::type
+                                    >::type,
+                                    ptr_t
+                            >::value
+                    >::type
             >
             explicit deleter_object(deleter_object<U, RhsDeleterImpl>&& rhs)
                     : deleter_(std::move(rhs.deleter_)) {}
 
             template <
-                    typename RhsDeleter,
+                    typename U,
+                    typename RhsDeleterImpl,
                     typename = typename std::enable_if<
                             std::is_convertible<
-                                    typename RhsDeleter::deleter_t*,
+                                    RhsDeleterImpl*,
                                     deleter_t*
+                            >::value
+                    >::type,
+                    typename = typename std::enable_if<
+                            std::is_convertible<
+                                    typename std::conditional<
+                                            std::is_array<U>::value,
+                                            typename std::decay<U>::type,
+                                            typename std::add_pointer<U>::type
+                                    >::type,
+                                    ptr_t
                             >::value
                     >::type
             >
-            deleter_object& operator=(RhsDeleter&& rhs)
+            deleter_object& operator=(deleter_object<U, RhsDeleterImpl>&& rhs)
             {
                 deleter_ = std::move(rhs.deleter_);
                 return *this;
@@ -173,10 +211,10 @@ namespace exl
                 return deleter_;
             }
 
-            template <typename RhsDeleter>
-            void set_deleter(RhsDeleter&& deleter)
+            template <typename RhsDeleterImpl>
+            void set_deleter(RhsDeleterImpl&& deleter)
             {
-                deleter_ = std::forward<RhsDeleter>(deleter);
+                deleter_ = std::forward<RhsDeleterImpl>(deleter);
             }
 
             void destroy(ptr_t obj)
@@ -231,6 +269,11 @@ namespace exl
                 rhs.ptr_ = nullptr;
 
                 return *this;
+            }
+
+            ptr_t get() const
+            {
+                return ptr_;
             }
 
             ~box_impl()
