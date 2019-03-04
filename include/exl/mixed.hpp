@@ -12,15 +12,12 @@
 
 #include <exl/matchers.hpp>
 #include <exl/in_place.hpp>
+
 #include <exl/impl/mixed/mixed_storage_operations.hpp>
+#include <exl/impl/mixed/markers.hpp>
 
 namespace exl
 {
-    namespace impl { namespace marker
-    {
-        class mixed {};
-    }}
-
     /// @brief Represents tagged union type
     ///
     /// This class provides tagged union implementation. Any subset of instantiated class can be
