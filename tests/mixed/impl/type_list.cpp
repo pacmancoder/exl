@@ -8,7 +8,7 @@
 
 #include <catch2/catch.hpp>
 
-#include <exl/impl/type_list.hpp>
+#include <exl/impl/mixed/type_list.hpp>
 
 using namespace exl::impl;
 

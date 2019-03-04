@@ -7,7 +7,7 @@
 
 #include <exl/option.hpp>
 
-#include "utils/ClassMock.hpp"
+#include <ClassMock.hpp>
 
 using namespace exl::test;
 

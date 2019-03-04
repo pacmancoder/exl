@@ -3,12 +3,13 @@
 // Distributed under the Boost Software License, Version 1.0.
 // (See accompanying file LICENSE or copy at https://www.boost.org/LICENSE_1_0.txt)
 
-#include <exl/mixed.hpp>
+#pragma once
 
-#include "utils/termination_test.hpp"
-
-void termination_test()
+namespace exl { namespace impl
 {
-    exl::mixed<char, int> m(422);
-    m.unwrap<char>();
-}
+    template <typename T>
+    void default_delete_scalar(T* p) { delete p; }
+
+    template <typename T>
+    void default_delete_array(T* p) { delete[] p; }
+}}
