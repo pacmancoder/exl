@@ -11,7 +11,7 @@
 
 #include <exl/mixed.hpp>
 
-#include "utils/ClassMock.hpp"
+#include <ClassMock.hpp>
 
 using namespace exl::impl;
 using namespace exl::test;

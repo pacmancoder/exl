@@ -7,8 +7,8 @@
 
 #include <exl/box.hpp>
 
-#include "utils/ClassMock.hpp"
-#include "utils/AllocObject.hpp"
+#include <ClassMock.hpp>
+#include <AllocObject.hpp>
 
 using namespace exl::test;
 
@@ -355,17 +355,17 @@ TEST_CASE("exl::impl_is_static_deleter test")
     REQUIRE(!exl::impl::is_deleter_function<int>::value());
 }
 
-TEST_CASE("exl::impl::box_impl has size of pointer when deleter is static function")
+TEST_CASE("exl::impl::boxed_ptr has size of pointer when deleter is static function")
 {
     using namespace exl::impl;
 
     REQUIRE(
-            sizeof(box_impl<int, exl::deleter_function<int, scalar_deleter_stub>>)
+            sizeof(boxed_ptr<int, exl::deleter_function<int, scalar_deleter_stub>>)
                     == sizeof(int*)
     );
 }
 
-TEST_CASE("exl::impl::box_impl with static deleter test")
+TEST_CASE("exl::impl::boxed_ptr with static deleter test")
 {
     using namespace exl::impl;
 
@@ -374,7 +374,7 @@ TEST_CASE("exl::impl::box_impl with static deleter test")
         StubDerivedClass value;
 
         {
-            box_impl<
+            boxed_ptr<
                     StubDerivedClass,
                     exl::deleter_function<StubBaseClass, static_base_class_deleter>
             > boxed(&value);
@@ -434,7 +434,7 @@ TEST_CASE("exl::impl::deleter_object test")
     }
 }
 
-TEST_CASE("exl::impl::box_impl destruction test")
+TEST_CASE("exl::impl::boxed_ptr destruction test")
 {
     using namespace exl::impl;
 
@@ -442,7 +442,7 @@ TEST_CASE("exl::impl::box_impl destruction test")
     {
         FakeDeletionObject obj;
         {
-            box_impl<FakeDeletionObject> i(&obj);
+            boxed_ptr<FakeDeletionObject> i(&obj);
         }
         REQUIRE(obj.tag == 42);
     }
@@ -457,7 +457,7 @@ TEST_CASE("exl::impl::box_impl destruction test")
         objs[2].tag = 3;
 
         {
-            box_impl<FakeDeletionObject[]> i(objs_ptr);
+            boxed_ptr<FakeDeletionObject[]> i(objs_ptr);
         }
 
         REQUIRE(objs[0].tag == 42);
@@ -470,7 +470,7 @@ TEST_CASE("exl::impl::box_impl destruction test")
         int value = 0;
 
         {
-            box_impl<int, exl::deleter_function<int, scalar_deleter_stub>> i(&value);
+            boxed_ptr<int, exl::deleter_function<int, scalar_deleter_stub>> i(&value);
         }
 
         REQUIRE(value == 42);
@@ -482,7 +482,7 @@ TEST_CASE("exl::impl::box_impl destruction test")
         const int new_value = 99;
 
         {
-            box_impl<
+            boxed_ptr<
                     int,
                     exl::deleter_object<
                             int,
@@ -495,7 +495,7 @@ TEST_CASE("exl::impl::box_impl destruction test")
     }
 }
 
-TEST_CASE("exl::impl::box_impl properties test")
+TEST_CASE("exl::impl::boxed_ptr properties test")
 {
     using namespace exl::impl;
 
@@ -503,13 +503,13 @@ TEST_CASE("exl::impl::box_impl properties test")
 
     SECTION("Size with static deleter equals to pointer size")
     {
-        box_impl<int, exl::deleter_function<int, scalar_deleter_stub>> i(&v);
+        boxed_ptr<int, exl::deleter_function<int, scalar_deleter_stub>> i(&v);
         REQUIRE(sizeof(decltype(i)) == sizeof(int*));
     }
 
     SECTION("With dynamic deleter has minimal size")
     {
-        box_impl<int, exl::deleter_object<int, StubDeleter>> i(&v);
+        boxed_ptr<int, exl::deleter_object<int, StubDeleter>> i(&v);
         REQUIRE(sizeof(decltype(i)) == (sizeof(StubDeleter) + sizeof(int*)));
     }
 }
@@ -521,12 +521,12 @@ TEST_CASE("exl::impl::boxed_impl can be constructed with compatible function del
     StubDerivedClass value;
 
     {
-        box_impl<
+        boxed_ptr<
                 StubDerivedClass,
                 exl::deleter_function<StubDerivedClass, static_derived_class_deleter>
         > derived_ptr(&value);
 
-        box_impl<
+        boxed_ptr<
                 StubBaseClass,
                 exl::deleter_function<StubBaseClass, static_base_class_deleter>
         >(std::move(derived_ptr));
@@ -542,12 +542,12 @@ TEST_CASE("exl::impl::boxed_impl can be assigned with compatible function delete
     StubDerivedClass derived_value;
     StubBaseClass base_value;
     {
-        box_impl<
+        boxed_ptr<
                 StubDerivedClass,
                 exl::deleter_function<StubDerivedClass, static_derived_class_deleter>
         > derived_ptr(&derived_value);
 
-        box_impl<
+        boxed_ptr<
                 StubBaseClass,
                 exl::deleter_function<StubBaseClass, static_base_class_deleter>
         > base_ptr(&base_value);
@@ -561,17 +561,17 @@ TEST_CASE("exl::impl::boxed_impl can be assigned with compatible function delete
     REQUIRE(derived_value.base_tag == 1);
 }
 
-TEST_CASE("exl::impl::box_impl can be constructed with convertible dynamic deleter")
+TEST_CASE("exl::impl::boxed_ptr can be constructed with convertible dynamic deleter")
 {
     StubDerivedClass derived;
 
     {
-        auto boxed = exl::impl::box_impl<
+        auto boxed = exl::impl::boxed_ptr<
                 StubDerivedClass,
                 exl::deleter_object<StubDerivedClass, StubDerivedClassDeleter>
         >(&derived, StubDerivedClassDeleter());
 
-        auto boxed2 = exl::impl::box_impl<
+        auto boxed2 = exl::impl::boxed_ptr<
                 StubDerivedClass,
                 exl::deleter_object<StubBaseClass, StubBaseClassDeleter>
         >(std::move(boxed));
@@ -583,17 +583,17 @@ TEST_CASE("exl::impl::box_impl can be constructed with convertible dynamic delet
     REQUIRE(derived.base_tag == 1);
 }
 
-TEST_CASE("exl::impl::box_impl can be assigned with convertible dynamic deleter")
+TEST_CASE("exl::impl::boxed_ptr can be assigned with convertible dynamic deleter")
 {
     StubDerivedClass derived;
 
     {
-        auto boxed = exl::impl::box_impl<
+        auto boxed = exl::impl::boxed_ptr<
                 StubDerivedClass,
                 exl::deleter_object<StubDerivedClass, StubDerivedClassDeleter>
         >(&derived, StubDerivedClassDeleter());
 
-        auto boxed2 = exl::impl::box_impl<
+        auto boxed2 = exl::impl::boxed_ptr<
                 StubDerivedClass,
                 exl::deleter_object<StubBaseClass, StubBaseClassDeleter>
         >(nullptr);
@@ -615,12 +615,12 @@ TEST_CASE("exl::impl::boxed_impl can be constructed with compatible array functi
     StubDerivedClass* value_ptr = value;
 
     {
-        box_impl<
+        boxed_ptr<
                 StubDerivedClass[],
                 exl::deleter_function<StubDerivedClass[], static_derived_class_deleter>
         > derived_ptr(value_ptr);
 
-        box_impl<
+        boxed_ptr<
                 StubBaseClass[],
                 exl::deleter_function<StubBaseClass[], static_base_class_deleter>
         > base_ptr(std::move(derived_ptr));
@@ -638,12 +638,12 @@ TEST_CASE("exl::impl::boxed_impl can be assigned with compatible array function 
     StubDerivedClass* value_ptr = value;
 
     {
-        box_impl<
+        boxed_ptr<
                 StubDerivedClass[],
                 exl::deleter_function<StubDerivedClass[], static_derived_class_deleter>
         > derived_ptr(value_ptr);
 
-        box_impl<
+        boxed_ptr<
                 StubBaseClass[],
                 exl::deleter_function<StubBaseClass[], static_base_class_deleter>
         > base_ptr(nullptr);
@@ -655,18 +655,18 @@ TEST_CASE("exl::impl::boxed_impl can be assigned with compatible array function 
     REQUIRE(value[1].base_tag == 0);
 }
 
-TEST_CASE("exl::impl::box_impl can be constructed with convertible array dynamic deleter")
+TEST_CASE("exl::impl::boxed_ptr can be constructed with convertible array dynamic deleter")
 {
     StubDerivedClass value[3];
     StubDerivedClass* value_ptr = value;
 
     {
-        auto derived_ptr = exl::impl::box_impl<
+        auto derived_ptr = exl::impl::boxed_ptr<
                 StubDerivedClass[],
                 exl::deleter_object<StubDerivedClass[], StubDerivedClassDeleter>
         >(value_ptr, StubDerivedClassDeleter());
 
-        auto base_ptr = exl::impl::box_impl<
+        auto base_ptr = exl::impl::boxed_ptr<
                 StubDerivedClass[],
                 exl::deleter_object<StubBaseClass[], StubBaseClassDeleter>
         >(std::move(derived_ptr));
@@ -679,18 +679,18 @@ TEST_CASE("exl::impl::box_impl can be constructed with convertible array dynamic
     REQUIRE(value[1].base_tag == 0);
 }
 
-TEST_CASE("exl::impl::box_impl can be assigned with convertible array dynamic deleter")
+TEST_CASE("exl::impl::boxed_ptr can be assigned with convertible array dynamic deleter")
 {
     StubDerivedClass value[3];
     StubDerivedClass* value_ptr = value;
 
     {
-        auto derived_ptr = exl::impl::box_impl<
+        auto derived_ptr = exl::impl::boxed_ptr<
                 StubDerivedClass[],
                 exl::deleter_object<StubDerivedClass[], StubDerivedClassDeleter>
         >(value_ptr, StubDerivedClassDeleter());
 
-        auto base_ptr = exl::impl::box_impl<
+        auto base_ptr = exl::impl::boxed_ptr<
                 StubDerivedClass[],
                 exl::deleter_object<StubBaseClass[], StubBaseClassDeleter>
         >(nullptr);
@@ -706,8 +706,8 @@ TEST_CASE("exl::impl::box_impl can be assigned with convertible array dynamic de
 }
 
 // TODO:
-//   - box_impl::swap
-//   - box_impl::reset
-//   - box_impl::release
+//   - boxed_ptr::swap
+//   - boxed_ptr::reset
+//   - boxed_ptr::release
 //   - cover exl::box with tests
 //   - reorganize/refactor tests
