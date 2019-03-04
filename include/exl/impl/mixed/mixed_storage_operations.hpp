@@ -25,7 +25,7 @@ namespace exl { namespace impl
         using storage_t = Storage;
 
     public:
-        static void destroy(Storage& storage, type_list_tag_t actualTag)
+        static void destroy(Storage& storage, type_list_tag_t actualTag) noexcept
         {
             if (actualTag == ExpectedTag)
             {
@@ -62,7 +62,7 @@ namespace exl { namespace impl
                 Storage& dest,
                 Storage&& src,
                 type_list_tag_t srcTag
-        )
+        ) noexcept
         {
             if (srcTag == ExpectedTag)
             {
@@ -100,7 +100,7 @@ namespace exl { namespace impl
                 Storage& dest,
                 Storage&& src,
                 type_list_tag_t srcTag
-        )
+        ) noexcept
         {
             if (srcTag == ExpectedTag)
             {
@@ -125,7 +125,7 @@ namespace exl { namespace impl
     struct mixed_storage_operations<TL, Storage, 0>
     {
     public:
-        static void destroy(Storage& storage, type_list_tag_t)
+        static void destroy(Storage& storage, type_list_tag_t) noexcept
         {
             reinterpret_cast<CurrentType*>(&storage)->~CurrentType();
         }
@@ -143,7 +143,7 @@ namespace exl { namespace impl
                 Storage& dest,
                 Storage&& src,
                 type_list_tag_t
-        )
+        ) noexcept
         {
             new(&dest) (CurrentType)(std::move(reinterpret_cast<CurrentType&>(src)));
         }
@@ -161,7 +161,7 @@ namespace exl { namespace impl
                 Storage& dest,
                 Storage&& src,
                 type_list_tag_t
-        )
+        ) noexcept
         {
             reinterpret_cast<CurrentType&>(dest) =
                     std::move(reinterpret_cast<CurrentType&>(src));

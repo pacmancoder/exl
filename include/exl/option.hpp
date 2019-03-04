@@ -34,7 +34,7 @@ namespace exl
         }
 
         /// @brief Returns option with ex::none
-        static option<T> make_none()
+        static option<T> make_none() noexcept
         {
             return make<exl::none>();
         }
@@ -61,27 +61,27 @@ namespace exl
         }
 
         /// @brief Returns true if object is exl::none
-        bool is_none() const
+        bool is_none() const noexcept
         {
             return base_mixed_t::template is<exl::none>();
         }
 
         /// @brief Returns true of object is not exl::none
-        bool is_some() const
+        bool is_some() const noexcept
         {
             return !is_none();
         }
 
         /// @brief Returns reference to contained value. Calls std::terminate if
         /// object has exl::none
-        T& unwrap_some()
+        T& unwrap_some() noexcept
         {
             return base_mixed_t::template unwrap<T>();
         }
 
         /// @brief Returns const reference to contained value. Calls std::terminate if
         /// object has exl::none
-        const T& unwrap_some() const
+        const T& unwrap_some() const noexcept
         {
             return base_mixed_t::template unwrap<T>();
         }

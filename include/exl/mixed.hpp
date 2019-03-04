@@ -90,7 +90,7 @@ namespace exl
                 typename T = typename impl::type_list_get_best_match<type_list_t, U>::type,
                 typename = typename std::enable_if<std::is_constructible<T, U>::value>::type
         >
-        mixed(U&& rhs)
+        mixed(U&& rhs) noexcept(std::is_rvalue_reference<decltype(std::forward<U>(rhs))>::value)
                 : storage_()
                 , tag_(tag_of<T>())
         {
@@ -160,7 +160,7 @@ namespace exl
                 typename T = typename impl::type_list_get_best_match<type_list_t, U>::type,
                 typename = typename std::enable_if<std::is_constructible<T, U>::value>::type
         >
-        mixed<Types...>& operator=(U&& rhs)
+        mixed<Types...>& operator=(U&& rhs) noexcept
         {
             constexpr auto newTag = tag_of<T>();
 
@@ -270,7 +270,7 @@ namespace exl
         /// @return True when stored type is same as specified type U or derived from it, false in
         /// other case.
         template <typename U>
-        bool is() const
+        bool is() const noexcept
         {
             return
                     impl::type_list_id_set_contains<
@@ -288,7 +288,7 @@ namespace exl
         /// @tparam U Type to perform check for
         /// @return True when stored type is same as specified type U, false in other case.
         template <typename U>
-        bool is_exact() const
+        bool is_exact() const noexcept
         {
             return impl::type_list_get_type_id<type_list_t, U>::value() == tag_;
         }
@@ -304,7 +304,7 @@ namespace exl
         /// @tparam U Requested type to unwrap
         /// @return Reference to unwrapped type
         template <typename U>
-        U& unwrap()
+        U& unwrap() noexcept
         {
             assert_type<U>();
             return unsafe_unwrap<U>();
@@ -321,7 +321,7 @@ namespace exl
         /// @tparam U Requested type to unwrap
         /// @return Const reference to unwrapped type
         template <typename U>
-        const U& unwrap() const
+        const U& unwrap() const noexcept
         {
             assert_type<U>();
             return unsafe_unwrap<U>();
@@ -337,7 +337,7 @@ namespace exl
         /// @tparam U Requested type to unwrap
         /// @return Reference to unwrapped type
         template <typename U>
-        U& unwrap_exact()
+        U& unwrap_exact() noexcept
         {
             assert_type_exact<U>();
             return unsafe_unwrap<U>();
@@ -353,7 +353,7 @@ namespace exl
         /// @tparam U Requested type to unwrap
         /// @return Const reference to unwrapped type
         template <typename U>
-        const U& unwrap_exact() const
+        const U& unwrap_exact() const noexcept
         {
             assert_type_exact<U>();
             return unsafe_unwrap<U>();
@@ -364,7 +364,7 @@ namespace exl
         /// @tparam U type to check for
         /// @tparam Func functor to call when type is same or derived
         template <typename U, typename Func>
-        void on(Func&& func)
+        void on(Func&& func) noexcept
         {
             if (is<U>())
             {
@@ -377,7 +377,7 @@ namespace exl
         /// @tparam U type to check for
         /// @tparam Func functor to call when type is same
         template <typename U, typename Func>
-        void on_exact(Func&& func)
+        void on_exact(Func&& func) noexcept
         {
             if (is_exact<U>())
             {
@@ -392,7 +392,7 @@ namespace exl
         /// @tparam Matchers set of matcher object types to perform match
         /// @param matchers set of matcher objects to perform match
         template <typename U, typename ... Matchers>
-        U map(Matchers&& ... matchers) const
+        U map(Matchers&& ... matchers) const noexcept
         {
             return map_internal<U, type_list_t>(std::forward<Matchers>(matchers)...);
         }
@@ -403,14 +403,14 @@ namespace exl
         /// @tparam Matchers set of matcher object types to perform match
         /// @param matchers set of matcher objects to perform match
         template <typename ... Matchers>
-        void match(Matchers&& ... matchers) const
+        void match(Matchers&& ... matchers) const noexcept
         {
             return map_internal<void, type_list_t>(std::forward<Matchers>(matchers)...);
         }
 
         /// @brief Returns current tag of mixed type. Please use returned value for check against
         /// exl::mixed::tag_of<T>()
-        tag_t tag() const
+        tag_t tag() const noexcept
         {
             return tag_;
         }
@@ -418,7 +418,7 @@ namespace exl
         /// @brief Returns tag for type U
         /// @tparam U Type to search tag for
         template <typename U>
-        static constexpr tag_t tag_of()
+        static constexpr tag_t tag_of() noexcept
         {
             return impl::type_list_get_type_id<type_list_t, U>::value();
         }
@@ -434,7 +434,7 @@ namespace exl
 
     private:
         template <typename U>
-        void assert_type() const
+        void assert_type() const noexcept
         {
             if (!is<U>())
             {
@@ -443,7 +443,7 @@ namespace exl
         }
 
         template <typename U>
-        void assert_type_exact() const
+        void assert_type_exact() const noexcept
         {
             if (!is_exact<U>())
             {
@@ -451,13 +451,15 @@ namespace exl
             }
         }
 
-        void destroy()
+        void destroy() noexcept
         {
             StorageOperations::destroy(storage_, tag_);
         }
 
         template <typename T, typename U>
-        void construct_from(U&& rhs)
+        void construct_from(
+                U&& rhs
+        ) noexcept(std::is_rvalue_reference<decltype(std::forward<U>(rhs))>::value)
         {
             new(&storage_) (T)(std::forward<U>(rhs));
         }
@@ -482,7 +484,7 @@ namespace exl
         }
 
         template <typename U>
-        void construct_from_subset_by_move(U&& rhs)
+        void construct_from_subset_by_move(U&& rhs) noexcept
         {
             using RhsStorageOperations = typename U::StorageOperations;
             using RhsStorage = typename U::storage_t;
@@ -526,7 +528,7 @@ namespace exl
         }
 
         template <typename U>
-        void assign_from_subset_by_move(U&& rhs)
+        void assign_from_subset_by_move(U&& rhs) noexcept
         {
             using RhsStorageOperations = typename U::StorageOperations;
             using RhsStorage = typename U::storage_t;
@@ -545,13 +547,13 @@ namespace exl
         }
 
         template <typename U>
-        U& unsafe_unwrap()
+        U& unsafe_unwrap() noexcept
         {
             return reinterpret_cast<U&>(storage_);
         }
 
         template <typename U>
-        const U& unsafe_unwrap() const
+        const U& unsafe_unwrap() const noexcept
         {
             return reinterpret_cast<const U&>(storage_);
         }
@@ -560,7 +562,7 @@ namespace exl
         typename std::enable_if<
                 std::is_same<typename Matcher::kind_t, impl::marker::matcher_when>::value,
                 U
-        >::type map_internal(Matcher&& matcher, Tail&& ... tail) const
+        >::type map_internal(Matcher&& matcher, Tail&& ... tail) const noexcept
         {
             using Target = typename Matcher::target_type_t;
             if (is<Target>())
@@ -592,7 +594,7 @@ namespace exl
                                 impl::type_list<>
                         >::value,
                 U
-        >::type map_internal(Matcher&& matcher) const
+        >::type map_internal(Matcher&& matcher) const noexcept
         {
             return static_cast<U>(matcher.impl(unsafe_unwrap<typename Matcher::target_type_t>()));
         }
@@ -601,7 +603,7 @@ namespace exl
         typename std::enable_if<
                 std::is_same<typename Matcher::kind_t, impl::marker::matcher_when_exact>::value,
                 U
-        >::type map_internal(Matcher&& matcher, Tail&& ... tail) const
+        >::type map_internal(Matcher&& matcher, Tail&& ... tail) const noexcept
         {
             using Target = typename Matcher::target_type_t;
             if (is_exact<Target>())
@@ -627,7 +629,7 @@ namespace exl
                                 impl::type_list<>
                         >::value,
                 U
-        >::type map_internal(Matcher&& matcher) const
+        >::type map_internal(Matcher&& matcher) const noexcept
         {
             return static_cast<U>(matcher.impl(unsafe_unwrap<typename Matcher::target_type_t>()));
         }
@@ -636,7 +638,7 @@ namespace exl
         typename std::enable_if<
                 std::is_same<typename Matcher::kind_t, impl::marker::matcher_otherwise>::value,
                 U
-        >::type map_internal(Matcher&& matcher) const
+        >::type map_internal(Matcher&& matcher) const noexcept
         {
             return static_cast<U>(matcher.impl());
         }
