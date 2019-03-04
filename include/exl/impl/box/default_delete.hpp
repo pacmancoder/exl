@@ -8,8 +8,8 @@
 namespace exl { namespace impl
 {
     template <typename T>
-    void default_delete_scalar(T* p) { delete p; }
+    void default_delete_scalar(T* p) noexcept { delete p; }
 
     template <typename T>
-    void default_delete_array(T* p) { delete[] p; }
+    void default_delete_array(T* p) noexcept { delete[] p; }
 }}

@@ -27,7 +27,7 @@ namespace exl { namespace impl
                         std::is_default_constructible<Deleter>::value
                 >::type
         >
-        explicit boxed_ptr(ptr_t ptr)
+        explicit boxed_ptr(ptr_t ptr) noexcept
                 : Deleter()
                 , ptr_(ptr) {}
 
@@ -40,7 +40,7 @@ namespace exl { namespace impl
         }
 
         template <typename RhsDeleter>
-        explicit boxed_ptr(ptr_t ptr, RhsDeleter&& rhs_deleter)
+        explicit boxed_ptr(ptr_t ptr, RhsDeleter&& rhs_deleter) noexcept
                 : Deleter(std::forward<RhsDeleter>(rhs_deleter))
                 , ptr_(ptr) {}
 
@@ -80,13 +80,13 @@ namespace exl { namespace impl
             std::swap(ptr_, rhs.ptr_);
         }
 
-        ~boxed_ptr()
+        ~boxed_ptr() noexcept
         {
             destroy_with_deleter();
         }
 
     private:
-        void destroy_with_deleter()
+        void destroy_with_deleter() noexcept
         {
             if (ptr_ != nullptr)
             {

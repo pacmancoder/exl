@@ -9,7 +9,7 @@ namespace exl { namespace test
     class StubDeleter
     {
     public:
-        StubDeleter()
+        StubDeleter() noexcept
                 : value_(nullptr) {}
 
         StubDeleter(StubDeleter&& rhs) noexcept
@@ -30,7 +30,7 @@ namespace exl { namespace test
             return *this;
         }
 
-        void operator()(int* obj)
+        void operator()(int* obj) noexcept
         {
             if (!value_)
             {

@@ -24,7 +24,11 @@ namespace exl
     }
     /// @brief Represents type which provides exception-less dynamic allocation mechanism
     /// result of allocation can be checked with is_valid method
-    /// @note Deleter object constructors should be no-throwing
+    ///
+    /// @tparam T type to wrap
+    /// @tparam Deleter custom deleter type, optional
+    ///
+    /// @warning If passing deleter to .from_ptr(...) by copy, copy constructor should be nothrow
     template <
             typename T,
             typename Deleter = typename get_default_deleter<T>::type
@@ -81,7 +85,7 @@ namespace exl
 
         /// @brief Assigns new value to box, destroying previously contained value
         template <typename U, typename UDeleter>
-        box& operator=(box<U, UDeleter>&& rhs)
+        box& operator=(box<U, UDeleter>&& rhs) noexcept
         {
             ptr_ = std::move(rhs.ptr_);
             return *this;
@@ -110,7 +114,7 @@ namespace exl
         }
 
         /// @brief Destroys previously contained object and owns provided pointer
-        void reset(T* rhs)
+        void reset(T* rhs) noexcept
         {
             ptr_.reset(rhs);
         }
@@ -149,10 +153,7 @@ namespace exl
                 : ptr_(new(std::nothrow) T(std::forward<Args>(args)...)) {}
 
         template <typename RhsDeleter>
-        explicit box(T* ptr, RhsDeleter&& rhs_deleter)
-                noexcept(std::is_rvalue_reference<
-                        decltype(std::forward<RhsDeleter>(rhs_deleter))
-                >::value)
+        explicit box(T* ptr, RhsDeleter&& rhs_deleter) noexcept
                 : ptr_(ptr, std::forward<Deleter>(rhs_deleter)) {}
 
         explicit box(T* ptr) noexcept
@@ -179,3 +180,6 @@ namespace std
         lhs.swap(rhs);
     }
 }
+
+// TODO: if_nothrow_constructible
+//       - same for boxed_ptr

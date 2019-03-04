@@ -12,8 +12,11 @@
 namespace exl
 {
     /// @brief Provides type to define exl::box deleter with custom deleter function
+    ///
     /// @tparam T type to delete
     /// @tparam DeleterFunc Custom deleter function reference
+    ///
+    /// @warning Provided deleter function should be nothrow
     template <
             typename T,
             typename impl::get_deleter_function_type<T>::type DeleterFunc
@@ -28,7 +31,7 @@ namespace exl
         >::type;
 
     public:
-        deleter_function() = default;
+        deleter_function() noexcept = default;
 
         template <
                 typename U,
@@ -44,7 +47,7 @@ namespace exl
                         >::value
                 >::type
         >
-        deleter_function(deleter_function<U, UDeleterFunc>&&) {}
+        deleter_function(deleter_function<U, UDeleterFunc>&&) noexcept {}
 
         template <
                 typename U,

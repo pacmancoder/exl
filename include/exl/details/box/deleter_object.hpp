@@ -13,10 +13,33 @@ namespace exl
     /// @brief Provides type to define exl::box deleter with custom object type
     /// @tparam T type to delete
     /// @tparam Deleter Custom deleter type
+    ///
+    /// @warning When using custom deleter object, it should meet the following requirements:
+    /// - function call operator should be nothrow
+    /// - Default nothrow constructor is available and accessible
+    /// - Nothrow nothrow move-construction and nothrow move-assignment are defined and accessible
+    /// - Destructor should be nothrow (in C++ this is default behavior)
     template <typename T, typename Deleter>
     class deleter_object
     {
     public:
+        static_assert(
+                std::is_nothrow_default_constructible<Deleter>::value,
+                "Custom deleter object should be nothrow default-constructable"
+        );
+        static_assert(
+                std::is_nothrow_move_constructible<Deleter>::value,
+                "Custom deleter object should be nothrow move-constructable"
+        );
+        static_assert(
+                std::is_nothrow_move_assignable<Deleter>::value,
+                "Custom deleter object should be nothrow move-assignable"
+        );
+        static_assert(
+                std::is_nothrow_destructible<Deleter>::value,
+                "Custom deleter object should be nothrow destructible"
+        );
+
         template <typename FT, typename FDeleter>
         friend
         class deleter_object;
@@ -30,12 +53,7 @@ namespace exl
         using deleter_t = Deleter;
 
     public:
-        template <
-                typename = typename std::enable_if<
-                        std::is_default_constructible<Deleter>::value
-                >::type
-        >
-        deleter_object()
+        deleter_object() noexcept
                 : deleter_() {}
 
         template <
@@ -47,7 +65,7 @@ namespace exl
                         >::value
                 >::type
         >
-        explicit deleter_object(RhsDeleterImpl&& rhs)
+        explicit deleter_object(RhsDeleterImpl&& rhs) noexcept
                 : deleter_(std::forward<RhsDeleterImpl>(rhs)) {}
 
         template <
@@ -70,7 +88,7 @@ namespace exl
                         >::value
                 >::type
         >
-        explicit deleter_object(deleter_object<U, RhsDeleterImpl>&& rhs)
+        explicit deleter_object(deleter_object<U, RhsDeleterImpl>&& rhs) noexcept
                 : deleter_(std::move(rhs.deleter_)) {}
 
         template <
@@ -93,13 +111,13 @@ namespace exl
                         >::value
                 >::type
         >
-        deleter_object& operator=(deleter_object<U, RhsDeleterImpl>&& rhs)
+        deleter_object& operator=(deleter_object<U, RhsDeleterImpl>&& rhs) noexcept
         {
             deleter_ = std::move(rhs.deleter_);
             return *this;
         }
 
-        void destroy(ptr_t obj)
+        void destroy(ptr_t obj) noexcept
         {
             deleter_(obj);
         }

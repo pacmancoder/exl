@@ -30,7 +30,7 @@ namespace exl
             explicit matcher(const Func& rhs)
                     : impl(rhs) {}
 
-            explicit matcher(Func&& rhs)
+            explicit matcher(Func&& rhs) noexcept
                     : impl(std::move(rhs)) {}
 
         public:
@@ -49,7 +49,9 @@ namespace exl
                     typename std::decay<Func>::type
             >
     >
-    Matcher when(Func&& func)
+    Matcher when(
+            Func&& func
+    ) noexcept(std::is_rvalue_reference<decltype(std::forward<Func>(func))>::value)
     {
         return Matcher(std::forward<Func>(func));
     }
@@ -64,7 +66,9 @@ namespace exl
                     typename std::decay<Func>::type
             >
     >
-    Matcher when_exact(Func&& func)
+    Matcher when_exact(
+            Func&& func
+    ) noexcept(std::is_rvalue_reference<decltype(std::forward<Func>(func))>::value)
     {
         return Matcher(std::forward<Func>(func));
     }
@@ -78,7 +82,9 @@ namespace exl
                     typename std::decay<Func>::type
             >
     >
-    Matcher otherwise(Func&& func)
+    Matcher otherwise(
+            Func&& func
+    ) noexcept(std::is_rvalue_reference<decltype(std::forward<Func>(func))>::value)
     {
         return Matcher(std::forward<Func>(func));
     }
