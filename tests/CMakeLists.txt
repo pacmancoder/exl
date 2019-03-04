@@ -6,12 +6,19 @@
 add_executable(exl-test
         # Utilities
         test-utils/ClassMock.cpp
-        # Tests
+
+        # Entry point
         tests.cpp
-        mixed/impl/type_list.cpp
+
+        # Tests
         matchers/matchers.cpp
+        mixed/impl/type_list.cpp
         mixed/mixed.cpp
         option/option.cpp
+        box/impl/is_deleter_function.cpp
+        box/impl/boxed_ptr.cpp
+        box/details/deleter_function.cpp
+        box/details/deleter_object.cpp
         box/box.cpp
 )
 
