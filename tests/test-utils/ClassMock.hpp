@@ -42,7 +42,7 @@ namespace exl { namespace test
     class ClassMock
     {
     public:
-        explicit ClassMock(Tag tag, CallCounter* calls = nullptr);
+        explicit ClassMock(Tag tag = 0, CallCounter* calls = nullptr);
 
         ClassMock(const ClassMock& rhs);
 
@@ -58,6 +58,10 @@ namespace exl { namespace test
         Tag original_tag() const;
 
         void set_tag(Tag tag);
+
+        bool is_called_as_const();
+
+        bool is_called_as_const() const;
 
         ~ClassMock();
 

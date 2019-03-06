@@ -138,4 +138,14 @@ namespace exl { namespace test
     {
         tag_ = tag;
     }
+
+    bool ClassMock::is_called_as_const()
+    {
+        return false;
+    }
+
+    bool ClassMock::is_called_as_const() const
+    {
+        return true;
+    }
 }}

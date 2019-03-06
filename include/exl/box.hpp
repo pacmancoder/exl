@@ -19,9 +19,6 @@
 
 namespace exl
 {
-    namespace impl
-    {
-    }
     /// @brief Represents type which provides exception-less dynamic allocation mechanism
     /// result of allocation can be checked with is_valid method
     ///
@@ -36,6 +33,30 @@ namespace exl
     class box
     {
     public:
+        using boxed_ptr_t = impl::boxed_ptr<T, Deleter>;
+
+        using element_t = typename std::remove_all_extents<T>::type;
+        using const_element_t = typename std::add_const<element_t>::type;
+
+        using ptr_t = typename std::add_pointer<element_t>::type;
+        using const_ptr_t = typename std::add_pointer<const_element_t>::type;
+
+        using ref_t = typename std::add_lvalue_reference<element_t>::type;
+        using const_ref_t = typename std::add_lvalue_reference<const_element_t>::type;
+
+        /// @brief Constructs box from pointer with provided deleter
+        ///
+        /// is_valid will return false if provided pointer is nullptr
+        template <typename RhsDeleter>
+        explicit box(ptr_t ptr, RhsDeleter&& rhs_deleter) noexcept
+                : ptr_(ptr, std::forward<Deleter>(rhs_deleter)) {}
+
+        /// @brief Constructs box from pointer with default-constructed deleter
+        ///
+        /// is_valid will return false if provided pointer is nullptr
+        explicit box(ptr_t ptr) noexcept
+                : ptr_(ptr) {}
+
         /// @brief Creates boxed type
         ///
         /// When allocation was failed, is_valid() will return false
@@ -43,16 +64,37 @@ namespace exl
         /// @tparam Args object constructor arguments types
         /// @param args object constructor arguments
         /// @return boxed object
-        template <typename ... Args>
+        template <
+                typename U = T,
+                typename = typename std::enable_if<!std::is_array<U>::value>::type,
+                typename ... Args
+        >
         static box make(Args&& ... args)
+        noexcept(std::is_nothrow_constructible<element_t, Args...>::value)
         {
-            return box(in_place, std::forward<Args>(args)...);
+            return box(new(std::nothrow) element_t(std::forward<Args>(args)...));
+        }
+
+        /// @brief Creates boxed array
+        ///
+        /// When allocation was failed, is_valid() will return false
+        ///
+        /// @param size array elements to create
+        /// @return boxed array
+        template <
+                typename U = T,
+                typename = typename std::enable_if<std::is_array<U>::value>::type
+        >
+        static box make(size_t size)
+        noexcept(std::is_nothrow_constructible<element_t>::value)
+        {
+            return box(new(std::nothrow) element_t[size]);
         }
 
         /// @brief Constructs box from pointer with default-constructed deleter
         ///
         /// is_valid will return false if provided pointer is nullptr
-        static box from_ptr(T* ptr) noexcept
+        static box from_ptr(ptr_t ptr) noexcept
         {
             return box(ptr);
         }
@@ -61,7 +103,7 @@ namespace exl
         ///
         /// is_valid will return false if provided pointer is nullptr
         template <typename RhsDeleter>
-        static box from_ptr(T* ptr, RhsDeleter&& deleter) noexcept
+        static box from_ptr(ptr_t ptr, RhsDeleter&& deleter) noexcept
         {
             return box(ptr, std::forward<RhsDeleter>(deleter));
         }
@@ -91,22 +133,6 @@ namespace exl
             return *this;
         }
 
-        /// @brief Returns reference to the contained object.
-        /// Calls std::terminate if box is not valid
-        T& get() noexcept
-        {
-            asset_valid();
-            return *ptr_.get();
-        }
-
-        /// @brief Returns const reference to the contained object.
-        /// Calls std::terminate if box is not valid
-        const T& get() const noexcept
-        {
-            asset_valid();
-            return *ptr_.get();
-        }
-
         /// @brief Returns false if allocation of box has been failed
         bool is_valid() const noexcept
         {
@@ -114,28 +140,72 @@ namespace exl
         }
 
         /// @brief Destroys previously contained object and owns provided pointer
-        void reset(T* rhs) noexcept
+        void reset(ptr_t rhs) noexcept
         {
             ptr_.reset(rhs);
         }
 
         /// @brief Releases ownership of contained pointer and returns it
-        T* release() noexcept
+        ptr_t release() noexcept
         {
             return ptr_.release();
         }
 
-        /// @brief Dereferences contained value.
+        /// @brief Dereferences contained value. or first element in case of array value
         /// Calls std::terminate if allocation has been failed
-        T& operator*() const noexcept
+        const_ref_t operator*() const noexcept
         {
             asset_valid();
             return *ptr_.get();
         }
 
+        /// @brief Dereferences contained value. or first element in case of array value
+        /// Calls std::terminate if allocation has been failed
+        ref_t operator*() noexcept
+        {
+            asset_valid();
+            return *ptr_.get();
+        }
+
+        /// @brief element reference from underlying array by index
+        /// Calls std::terminate if allocation has been failed
+        ///
+        /// @note defined only when T is array
+        template <
+                typename U = T,
+                typename = typename std::enable_if<std::is_array<U>::value>::type
+        >
+        ref_t operator[](size_t index) noexcept
+        {
+            asset_valid();
+            return ptr_.get()[index];
+        }
+
+        /// @brief returns element const reference from underlying array by index
+        /// Calls std::terminate if allocation has been failed
+        ///
+        /// @note defined only when T is array
+        template <
+                typename U = T,
+                typename = typename std::enable_if<std::is_array<U>::value>::type
+        >
+        const_ref_t operator[](size_t index) const noexcept
+        {
+            asset_valid();
+            return ptr_.get()[index];
+        }
+
         /// @brief Dereferences contained value.
         /// Calls std::terminate if allocation has been failed
-        T* operator->() const noexcept
+        const_ptr_t operator->() const noexcept
+        {
+            asset_valid();
+            return ptr_.get();
+        }
+
+        /// @brief Dereferences contained value.
+        /// Calls std::terminate if allocation has been failed
+        ptr_t operator->() noexcept
         {
             asset_valid();
             return ptr_.get();
@@ -148,17 +218,6 @@ namespace exl
         }
 
     private:
-        template <typename ... Args>
-        explicit box(in_place_t, Args&& ... args)
-                : ptr_(new(std::nothrow) T(std::forward<Args>(args)...)) {}
-
-        template <typename RhsDeleter>
-        explicit box(T* ptr, RhsDeleter&& rhs_deleter) noexcept
-                : ptr_(ptr, std::forward<Deleter>(rhs_deleter)) {}
-
-        explicit box(T* ptr) noexcept
-                : ptr_(ptr) {}
-
         void asset_valid() const noexcept
         {
             if (!is_valid())
@@ -168,7 +227,7 @@ namespace exl
         }
 
     private:
-        impl::boxed_ptr<T, Deleter> ptr_;
+        boxed_ptr_t ptr_;
     };
 }
 
@@ -180,6 +239,3 @@ namespace std
         lhs.swap(rhs);
     }
 }
-
-// TODO: if_nothrow_constructible
-//       - same for boxed_ptr

@@ -9,6 +9,8 @@
 
 #include <ClassMock.hpp>
 #include <AllocObject.hpp>
+#include <deleter_function_stub.hpp>
+#include <StubDeleter.hpp>
 
 using namespace exl::test;
 
@@ -50,19 +52,6 @@ TEST_CASE("exl::box calls object destructor on destroy", "[box]")
     REQUIRE(calls.count(CallType::Destroy, 1) == 1);
 }
 
-TEST_CASE("exl::box non-const get() returns non-const reference")
-{
-    auto boxed = exl::box<ClassMock>::make(1);
-    boxed.get().set_tag(42);
-    REQUIRE(boxed.get().tag() == 42);
-}
-
-TEST_CASE("exl::box const get() returns const reference")
-{
-    auto boxed = exl::box<ClassMock>::make(99);
-    REQUIRE(boxed.get().tag() == 99);
-}
-
 TEST_CASE("exl::box move-constructs from other box")
 {
     CallCounter calls;
@@ -78,7 +67,7 @@ TEST_CASE("exl::box move-constructs from other box")
     REQUIRE(boxed2.is_valid());
 
     // Check that box2 contains same object as we created previously
-    REQUIRE(boxed2.get().tag() == 1);
+    REQUIRE(boxed2->tag() == 1);
 }
 
 TEST_CASE("exl::box constructs from pointer")
@@ -87,7 +76,7 @@ TEST_CASE("exl::box constructs from pointer")
             new(std::nothrow) AlwaysGoodAllocObject()
     );
 
-    REQUIRE(static_cast<void*>(&boxed.get()) == reinterpret_cast<void*>(1));
+    REQUIRE(static_cast<void*>(&*boxed) == reinterpret_cast<void*>(1));
 }
 
 TEST_CASE("exl::box reset destroys old abject and places new pointer")
@@ -99,7 +88,7 @@ TEST_CASE("exl::box reset destroys old abject and places new pointer")
 
     REQUIRE(calls.count(CallType::Destroy, 1) == 1);
     REQUIRE(boxed.is_valid());
-    REQUIRE(boxed.get().tag() == 2);
+    REQUIRE(boxed->tag() == 2);
 }
 
 TEST_CASE("exl::box release releases ownership")
@@ -118,20 +107,28 @@ TEST_CASE("exl::box release releases ownership")
     REQUIRE(calls.count(CallType::Destroy, 1) == 0);
 }
 
-TEST_CASE("exl::box dereference operator returns mutable reference")
+TEST_CASE("exl::box dereference operator returns non-const reference when box is non-const")
 {
     auto boxed = exl::box<ClassMock>::make(1);
-
-    (*boxed).set_tag(42);
-    REQUIRE(boxed.get().tag() == 42);
+    REQUIRE(!boxed->is_called_as_const());
 }
 
-TEST_CASE("exl::box arrow operator returns pointer to mutable value")
+TEST_CASE("exl::box dereference operator returns const reference when box is const")
+{
+    const auto boxed = exl::box<ClassMock>::make(1);
+    REQUIRE(boxed->is_called_as_const());
+}
+
+TEST_CASE("exl::box arrow operator returns non-const reference when box is non-const")
 {
     auto boxed = exl::box<ClassMock>::make(1);
+    REQUIRE(!boxed->is_called_as_const());
+}
 
-    boxed->set_tag(42);
-    REQUIRE(boxed.get().tag() == 42);
+TEST_CASE("exl::box arrow operator returns const reference when box is const")
+{
+    const auto boxed = exl::box<ClassMock>::make(1);
+    REQUIRE(boxed->is_called_as_const());
 }
 
 TEST_CASE("exl::box bool operator returns is_valid")
@@ -179,9 +176,73 @@ TEST_CASE("exl::box assignment operator removes old value and assigns new pointe
     REQUIRE(!boxed2.is_valid());
 }
 
-// TODO:
-//   - boxed_ptr::swap
-//   - boxed_ptr::reset
-//   - boxed_ptr::release
-//   - cover exl::box with tests
-//   - reorganize/refactor tests
+TEST_CASE("exl::box works with custom deleter function when scalar")
+{
+    int value = 0;
+
+    {
+        auto boxed = exl::box<
+                int,
+                exl::deleter_function<int, scalar_deleter_stub>
+        >::from_ptr(&value);
+    }
+
+    REQUIRE(value == 42);
+}
+
+TEST_CASE("exl::box works with custom deleter function when array")
+{
+    int value[] = { 0, 0, 0 };
+
+    {
+        auto boxed = exl::box<
+                int[],
+                exl::deleter_function<int[], array_deleter_stub>
+        >::from_ptr(value);
+    }
+
+    REQUIRE(value[0] == 1);
+    REQUIRE(value[1] == 2);
+    REQUIRE(value[2] == 3);
+}
+
+TEST_CASE("exl::box index operator returned non-const reference when box is non-const")
+{
+    auto boxed = exl::box<ClassMock[]>::make(5);
+    REQUIRE(!boxed[0].is_called_as_const());
+}
+
+TEST_CASE("exl::box index operator returned const reference when box is const")
+{
+    const auto boxed = exl::box<ClassMock[]>::make(5);
+    REQUIRE(boxed[1].is_called_as_const());
+}
+
+TEST_CASE("exl::box works with custom deleter object when scalar")
+{
+    int value = 0;
+
+    {
+        auto boxed = exl::box<
+                int,
+                exl::deleter_object<int, StubDeleter>
+        >::from_ptr(&value);
+    }
+
+    REQUIRE(value == 399);
+}
+
+TEST_CASE("exl::box works with custom deleter object when array")
+{
+    int value[] = { 0, 0 };
+
+    {
+        auto boxed = exl::box<
+                int[],
+                exl::deleter_object<int[], StubDeleter>
+        >::from_ptr(value);
+    }
+
+    REQUIRE(value[0] == 399);
+    REQUIRE(value[1] == 0);
+}
