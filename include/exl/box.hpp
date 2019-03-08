@@ -37,9 +37,6 @@ namespace exl
     class box
     {
     public:
-        friend class std::hash<box>;
-
-    public:
         using boxed_ptr_t = impl::boxed_ptr<T, Deleter>;
 
         using element_t = typename std::remove_all_extents<T>::type;
