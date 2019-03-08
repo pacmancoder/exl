@@ -276,10 +276,10 @@ namespace exl
         {
             if (is_valid())
             {
-                return on_valid.impl(const_ref_t(*ptr_.get()));
+                return static_cast<U>(on_valid.impl(const_ref_t(*ptr_.get())));
             }
 
-            return on_invalid.impl();
+            return static_cast<U>(on_invalid.impl());
         }
 
         /// @brief maps contained value to the required type
@@ -304,10 +304,10 @@ namespace exl
         {
             if (is_valid())
             {
-                return on_valid.impl(ref_t(*ptr_.get()));
+                return static_cast<U>(on_valid.impl(ref_t(*ptr_.get())));
             }
 
-            return on_invalid.impl();
+            return static_cast<U>(on_invalid.impl());
         }
 
         /// @brief maps contained value to the required type
