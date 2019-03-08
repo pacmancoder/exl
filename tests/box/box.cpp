@@ -259,7 +259,7 @@ TEST_CASE("exl::box map perform value mapping on const box")
                 exl::when_valid(
                         [](const int& value)
                         {
-                            return value * 5;
+                            return static_cast<char>(value * 5);
                         }
                 ),
                 exl::otherwise(
@@ -281,7 +281,7 @@ TEST_CASE("exl::box map perform value mapping on const box")
                 exl::when_valid(
                         [](const int& value)
                         {
-                            return value * 5;
+                            return static_cast<char>(value * 5);
                         }
                 ),
                 exl::otherwise(
@@ -331,7 +331,7 @@ TEST_CASE("exl::box map perform value mapping on non-const box")
                         [](int& value)
                         {
                             ++value;
-                            return value * 5;
+                            return static_cast<char>(value * 5);
                         }
                 ),
                 exl::otherwise(
