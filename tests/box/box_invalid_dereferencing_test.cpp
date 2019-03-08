@@ -14,7 +14,7 @@ using namespace exl::test;
 void termination_test()
 {
     auto boxed = exl::box<AlwaysBadAllocObject>::make();
-    auto& unwrapped = boxed.get();
+    auto& unwrapped = *boxed;
 
     (void) unwrapped;
 }
