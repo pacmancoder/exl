@@ -71,8 +71,6 @@ TEST_CASE("Matcher exl::when can be called with any callable", "[matchers]")
         auto matcher = exl::when<int>(callable);
 
         REQUIRE(matcher.impl(5) == 25);
-        REQUIRE(matcher.impl.is_copied);
-        REQUIRE(!matcher.impl.is_moved);
     }
 
     SECTION("With callable object moved")
@@ -80,8 +78,6 @@ TEST_CASE("Matcher exl::when can be called with any callable", "[matchers]")
         auto matcher = exl::when<int>(CallableMock());
 
         REQUIRE(matcher.impl(5) == 25);
-        REQUIRE(!matcher.impl.is_copied);
-        REQUIRE(matcher.impl.is_moved);
     }
 }
 
@@ -130,8 +126,6 @@ TEST_CASE("Matcher exl::when_exact can be called with any callable", "[matchers]
         auto matcher = exl::when_exact<int>(callable);
 
         REQUIRE(matcher.impl(5) == 25);
-        REQUIRE(matcher.impl.is_copied);
-        REQUIRE(!matcher.impl.is_moved);
     }
 
     SECTION("With callable object moved")
@@ -139,8 +133,6 @@ TEST_CASE("Matcher exl::when_exact can be called with any callable", "[matchers]
         auto matcher = exl::when_exact<int>(CallableMock());
 
         REQUIRE(matcher.impl(5) == 25);
-        REQUIRE(!matcher.impl.is_copied);
-        REQUIRE(matcher.impl.is_moved);
     }
 }
 
@@ -192,8 +184,6 @@ TEST_CASE("Matcher exl::otherwise can be called with any callable", "[matchers]"
         auto matcher = exl::otherwise(callable);
 
         REQUIRE(matcher.impl(5) == 25);
-        REQUIRE(matcher.impl.is_copied);
-        REQUIRE(!matcher.impl.is_moved);
     }
 
     SECTION("With callable object moved")
@@ -201,8 +191,6 @@ TEST_CASE("Matcher exl::otherwise can be called with any callable", "[matchers]"
         auto matcher = exl::otherwise(CallableMock());
 
         REQUIRE(matcher.impl(5) == 25);
-        REQUIRE(!matcher.impl.is_copied);
-        REQUIRE(matcher.impl.is_moved);
     }
 }
 
