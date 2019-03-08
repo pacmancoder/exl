@@ -8,6 +8,8 @@
 #include <new>
 #include <type_traits>
 #include <utility>
+#include <functional>
+#include <cstdint>
 
 #include <exl/in_place.hpp>
 
@@ -16,6 +18,8 @@
 #include <exl/details/box/get_default_deleter.hpp>
 
 #include <exl/impl/box/boxed_ptr.hpp>
+
+#include <exl/matchers.hpp>
 
 namespace exl
 {
@@ -32,6 +36,9 @@ namespace exl
     >
     class box
     {
+    public:
+        friend class std::hash<box>;
+
     public:
         using boxed_ptr_t = impl::boxed_ptr<T, Deleter>;
 
@@ -79,16 +86,33 @@ namespace exl
         ///
         /// When allocation was failed, is_valid() will return false
         ///
+        /// @param N array elements to create
+        /// @return boxed array
+        template <
+                size_t N,
+                typename U = T,
+                typename = typename std::enable_if<std::is_array<U>::value>::type
+        >
+        static box make_array()
+        noexcept(std::is_nothrow_constructible<element_t>::value)
+        {
+            return box(new(std::nothrow) element_t[N]);
+        }
+
+        /// @brief Creates boxed array
+        ///
+        /// When allocation was failed, is_valid() will return false
+        ///
         /// @param size array elements to create
         /// @return boxed array
         template <
                 typename U = T,
                 typename = typename std::enable_if<std::is_array<U>::value>::type
         >
-        static box make(size_t size)
+        static box make_array(size_t array_size)
         noexcept(std::is_nothrow_constructible<element_t>::value)
         {
-            return box(new(std::nothrow) element_t[size]);
+            return box(new(std::nothrow) element_t[array_size]);
         }
 
         /// @brief Constructs box from pointer with default-constructed deleter
@@ -153,6 +177,10 @@ namespace exl
 
         /// @brief Dereferences contained value. or first element in case of array value
         /// Calls std::terminate if allocation has been failed
+        template <
+                typename U = T,
+                typename = typename std::enable_if<!std::is_array<U>::value>::type
+        >
         const_ref_t operator*() const noexcept
         {
             asset_valid();
@@ -161,6 +189,10 @@ namespace exl
 
         /// @brief Dereferences contained value. or first element in case of array value
         /// Calls std::terminate if allocation has been failed
+        template <
+                typename U = T,
+                typename = typename std::enable_if<!std::is_array<U>::value>::type
+        >
         ref_t operator*() noexcept
         {
             asset_valid();
@@ -197,6 +229,10 @@ namespace exl
 
         /// @brief Dereferences contained value.
         /// Calls std::terminate if allocation has been failed
+        template <
+                typename U = T,
+                typename = typename std::enable_if<!std::is_array<U>::value>::type
+        >
         const_ptr_t operator->() const noexcept
         {
             asset_valid();
@@ -205,6 +241,10 @@ namespace exl
 
         /// @brief Dereferences contained value.
         /// Calls std::terminate if allocation has been failed
+        template <
+                typename U = T,
+                typename = typename std::enable_if<!std::is_array<U>::value>::type
+        >
         ptr_t operator->() noexcept
         {
             asset_valid();
@@ -215,6 +255,161 @@ namespace exl
         explicit operator bool() const noexcept
         {
             return is_valid();
+        }
+
+        /// @brief maps contained value to the required type
+        /// OnValidFunc functor should have single argument of type const T& and return U
+        /// OnInvalidFunc functor should not have any arguments and return U
+        ///
+        /// @tparam U type to map to
+        /// @param on_valid matcher object of type exl::when_valid
+        /// @param on_invalid matcher object of type exl::otherwise
+        /// @return mapped value
+        template <
+                typename U,
+                typename OnValidFunc,
+                typename OnInvalidFunc,
+                typename _T = T,
+                typename = typename std::enable_if<!std::is_array<_T>::value>::type
+        >
+        U map(
+                exl::when_valid_t<OnValidFunc> on_valid,
+                exl::otherwise_t<OnInvalidFunc> on_invalid
+        ) const
+        {
+            if (is_valid())
+            {
+                return on_valid.impl(const_ref_t(*ptr_.get()));
+            }
+
+            return on_invalid.impl();
+        }
+
+        /// @brief maps contained value to the required type
+        /// OnValidFunc functor should have single argument of type T& and return U
+        /// OnInvalidFunc functor should not have any arguments and return U
+        ///
+        /// @tparam U type to map to
+        /// @param on_valid matcher object of type exl::when_valid
+        /// @param on_invalid matcher object of type exl::otherwise
+        /// @return mapped value
+        template <
+                typename U,
+                typename OnValidFunc,
+                typename OnInvalidFunc,
+                typename _T = T,
+                typename = typename std::enable_if<!std::is_array<_T>::value>::type
+        >
+        U map(
+                exl::when_valid_t<OnValidFunc> on_valid,
+                exl::otherwise_t<OnInvalidFunc> on_invalid
+        )
+        {
+            if (is_valid())
+            {
+                return on_valid.impl(ref_t(*ptr_.get()));
+            }
+
+            return on_invalid.impl();
+        }
+
+        /// @brief maps contained value to the required type
+        /// OnValidFunc functor should have single argument of type const T& and return nothing
+        /// OnInvalidFunc functor should not have any arguments and return nothing
+        ///
+        /// @param on_valid matcher object of type exl::when_valid
+        /// @param on_invalid matcher object of type exl::otherwise
+        /// @return mapped value
+        template <
+                typename OnValidMatcher,
+                typename OnInvalidMatcher,
+                typename _T = T,
+                typename = typename std::enable_if<!std::is_array<_T>::value>::type
+        >
+        void match(
+                OnValidMatcher&& on_valid,
+                OnInvalidMatcher&& on_invalid
+        ) const
+        {
+            map<void>(
+                    std::forward<OnValidMatcher>(on_valid),
+                    std::forward<OnInvalidMatcher>(on_invalid)
+            );
+        }
+
+        /// @brief maps contained value to the required type
+        /// OnValidFunc functor should have single argument of type T& and return nothing
+        /// OnInvalidFunc functor should not have any arguments and return nothing
+        ///
+        /// @param on_valid matcher object of type exl::when_valid
+        /// @param on_invalid matcher object of type exl::otherwise
+        /// @return mapped value
+        template <
+                typename OnValidMatcher,
+                typename OnInvalidMatcher,
+                typename _T = T,
+                typename = typename std::enable_if<!std::is_array<_T>::value>::type
+        >
+        void match(
+                OnValidMatcher&& on_valid,
+                OnInvalidMatcher&& on_invalid
+        )
+        {
+            map<void>(
+                    std::forward<OnValidMatcher>(on_valid),
+                    std::forward<OnInvalidMatcher>(on_invalid)
+            );
+        }
+
+        /// @brief Calls functor Func when box is valid.
+        /// Functor should have single argument of type const T& and return nothing
+        ///
+        /// @param func callable object with void return type
+        template <
+                typename Func,
+                typename _T = T,
+                typename = typename std::enable_if<!std::is_array<_T>::value>::type
+        >
+        void on_valid(Func&& func) const
+        {
+            if (is_valid())
+            {
+                func(const_ref_t(*ptr_.get()));
+            }
+        }
+
+        /// @brief Calls functor Func when box is valid.
+        /// Functor should have single argument of type T& and return nothing
+        ///
+        /// @param func callable object with void return type
+        template <
+                typename Func,
+                typename _T = T,
+                typename = typename std::enable_if<!std::is_array<_T>::value>::type
+        >
+        void on_valid(Func&& func)
+        {
+            if (is_valid())
+            {
+                func(ref_t(*ptr_.get()));
+            }
+        }
+
+        /// @brief Calls functor Func when box is invalid.
+        /// Functor should have no arguments and return nothing
+        ///
+        /// @param func callable object with void return type
+        template <
+                typename Func,
+                typename _T = T,
+                typename = typename std::enable_if<!std::is_array<_T>::value>::type
+        >
+        void on_invalid(Func&& func) const
+        {
+            if (!is_valid())
+            {
+                func();
+            }
         }
 
     private:
@@ -233,6 +428,7 @@ namespace exl
 
 namespace std
 {
+    /// @brief std::swap specialization for exl::box<T, Deleter>
     template <typename T, typename Deleter>
     void swap(exl::box<T, Deleter>& lhs, exl::box<T, Deleter>& rhs) noexcept
     {
