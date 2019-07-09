@@ -12,9 +12,13 @@ add_executable(exl-test
 
         # Tests
         matchers/matchers.cpp
+
         mixed/impl/type_list.cpp
         mixed/mixed.cpp
+        mixed/nested_mixed.cpp
+
         option/option.cpp
+
         box/impl/is_deleter_function.cpp
         box/impl/boxed_ptr.cpp
         box/details/deleter_function.cpp

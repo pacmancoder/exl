@@ -647,4 +647,55 @@ namespace exl
         storage_t storage_;
         tag_t tag_;
     };
+
+    /// @brief Wrapper type to allow nested exl::mixed types
+    ///
+    /// To make nested exl::variant, declare type for example as in the following snippet
+    /// ```
+    /// exl::mixed<std::string, exl::nested_mixed<ParsingError, TransportError>>
+    /// ```
+    ///
+    /// To work with nested exl::mixed, use * and -> operators
+    ///
+    /// @tparam Types List of exl::mixed variants
+    template <typename ... Types>
+    class nested_mixed
+    {
+    public:
+        using mixed_t = exl::mixed<Types...>;
+
+    public:
+        /// @brief Constructs new nested mixed type; provided arguments are directly forwarded to
+        /// the underlying exl::mixed
+        template <typename ... Args>
+        explicit nested_mixed(Args&& ... args)
+            : value_(std::forward<Args>(args)...) {}
+
+        nested_mixed(const nested_mixed&) = default;
+        nested_mixed(nested_mixed&&) noexcept = default;
+
+        nested_mixed& operator=(const nested_mixed&) = default;
+        nested_mixed& operator=(nested_mixed&&) noexcept = default;
+
+        /// @return Underlying mixed type
+        mixed_t& operator*() noexcept { return value_; }
+        /// @return Underlying const mixed type
+        const mixed_t& operator*() const noexcept { return value_; }
+
+        /// @return Underlying mixed type
+        mixed_t* operator->() noexcept { return &value_; }
+        /// @return Underlying const mixed type
+        const mixed_t* operator->() const noexcept { return &value_; }
+
+    public:
+        /// @brief Verbose alias for in-place construction
+        template <typename U, typename ... Args>
+        static nested_mixed<Types...> make(Args&& ... args)
+        {
+            return nested_mixed<Types...>(in_place_type_t<U>(), std::forward<Args>(args)...);
+        }
+
+    private:
+        mixed_t value_;
+    };
 }
